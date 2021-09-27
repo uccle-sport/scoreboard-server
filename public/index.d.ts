@@ -11,6 +11,8 @@ export declare class ScoreBoard {
     homeTeam: string;
     awayTeam: string;
     init(): void;
+    private syncState;
+    private updateState;
     private updateScore;
 }
 export declare const scoreBoard: ScoreBoard;

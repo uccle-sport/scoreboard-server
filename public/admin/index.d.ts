@@ -11,9 +11,13 @@ export declare class ScoreBoardAdmin {
     homeTeam: string;
     awayTeam: string;
     private editingTime;
+    private latestRev;
+    private elements?;
     init(): void;
+    private updateState;
     private updateElements;
     update(full?: boolean): void;
+    private sync;
     showSettings(): void;
     hideSettings(): void;
 }
