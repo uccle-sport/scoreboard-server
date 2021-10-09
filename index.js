@@ -57,7 +57,7 @@ io.on('connection', (socket) => {
                 ...(msg.remaining ? {
                     endDate: +new Date() + msg.remaining * 1000,
                     remaining: msg.remaining
-                } : msg.paused && state[uuid].endDate ? { remaining: Math.floor((state[uuid].endDate - +new Date()) / 1000) } : {}),
+                } : msg.paused && !state[uuid].paused && state[uuid].endDate ? { remaining: Math.floor((state[uuid].endDate - +new Date()) / 1000) } : {}),
                 rev: uuidv4(),
             }
             console.log('states is ', state[uuid]);
