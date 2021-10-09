@@ -60,6 +60,7 @@ io.on('connection', (socket) => {
                 } : msg.paused && state[uuid].endDate ? { remaining: Math.floor((state[uuid].endDate - +new Date()) / 1000) } : {}),
                 rev: uuidv4(),
             }
+            console.log('states is ', state[uuid]);
             forward('update', uuid, token, callback, msg)
         } else {
             callback({status: 409})
