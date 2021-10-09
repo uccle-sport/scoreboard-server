@@ -54,9 +54,11 @@ io.on('connection', (socket) => {
             state[uuid] = {
                 ...(state[uuid]),
                 ...msg,
-                endDate: (msg.remaining ? +new Date() + msg.remaining * 1000 : state[uuid].endDate),
+                ...(msg.remaining ? {
+                    endDate: +new Date() + msg.remaining * 1000,
+                    remaining: msg.remaining
+                } : msg.paused && state[uuid].endDate ? { remaining: Math.floor((state[uuid].endDate - +new Date()) / 1000) } : {}),
                 rev: uuidv4(),
-                remaining: msg.remaining || (state[uuid].endDate ? Math.floor((state[uuid].endDate - +new Date()) / 1000) : undefined)
             }
             forward('update', uuid, token, callback, msg)
         } else {
