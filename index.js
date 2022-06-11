@@ -3,7 +3,7 @@ const app = express();
 const http = require('http').Server(app);
 const io = require('socket.io')(http);
 const PORT = process.env.PORT || 5000
-const GDS_SECRET = process.env.GDS_SECRET || 'S3l3n1umSh@z@m'
+const GDS_SECRET = process.env.GDS_SECRET || 'Secret'
 const {v4: uuidv4} = require('uuid');
 
 console.log(`Secret is set to ${GDS_SECRET}`)
