@@ -10,5 +10,8 @@
   },
   "scripts": {
     "start": "node index.js"
+  },
+  "devDependencies": {
+    "yarn": "^1.22.19"
   }
 }
