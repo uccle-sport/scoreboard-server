@@ -8,7 +8,7 @@
 </head>
 <body>
 <div id="settings" class="z-20 absolute top-0 left-0 w-screen h-full pt-4 bg-indigo-100 hidden">
-    <form class="flex mt-32 px-8 flex-col w-full">
+    <form class="flex mt-28 px-8 flex-col w-full">
         <div class="relative flex w-full flex-wrap items-stretch mb-3">
             <input type="text" placeholder="Home Team" name="home-team" id="home-team-input"
                    class="px-3 py-3 placeholder-blueGray-300 text-blueGray-600 relative bg-white bg-white rounded text-sm border border-blueGray-300 outline-none focus:outline-none focus:ring w-full pr-10"/>
@@ -17,10 +17,10 @@
             <input type="text" placeholder="Away team" name="away-team" id="away-team-input"
                    class="px-3 py-3 placeholder-blueGray-300 text-blueGray-600 relative bg-white bg-white rounded text-sm border border-blueGray-300 outline-none focus:outline-none focus:ring w-full pr-10"/>
         </div>
-        <div class="self-center py-16">
+        <div class="self-center py-12">
             <canvas id="qr" class="w-48 h-48"></canvas>
         </div>
-        <div class="self-center py-16">
+        <div class="self-center">
             <button class="block mt-4 mx-auto flex-grow bg-indigo-700 text-white active:bg-indigo-900 font-bold uppercase text-base px-8 py-3 rounded shadow-md hover:shadow-lg outline-none focus:outline-none mb-1 ease-linear transition-all duration-150"
                     type="button"
                     style="visibility: hidden"
@@ -103,7 +103,7 @@
     </div>
     <div class="flex-auto">
         <div id="set-time" class="flex flex-nowrap mt-1" style="visibility: hidden">
-            <button class="ml-10 mr-10 flex-grow bg-indigo-700 text-white active:bg-indigo-900 font-bold uppercase text-base px-3 py-3 rounded shadow-md hover:shadow-lg outline-none focus:outline-none mb-1 ease-linear transition-all duration-150"
+            <button class="flex-grow bg-indigo-700 text-white active:bg-indigo-900 font-bold uppercase text-base px-3 py-3 rounded shadow-md hover:shadow-lg outline-none focus:outline-none mb-1 ease-linear transition-all duration-150"
                     type="button"
                     id="set-time-to-3500"
             >
@@ -115,7 +115,7 @@
             >
                 30:00
             </button>
-            <button class="ml-10 mr-10 flex-grow bg-indigo-700 text-white active:bg-indigo-900 font-bold uppercase text-base px-3 py-3 rounded shadow-md hover:shadow-lg outline-none focus:outline-none mb-1 ease-linear transition-all duration-150"
+            <button class="flex-grow bg-indigo-700 text-white active:bg-indigo-900 font-bold uppercase text-base px-3 py-3 rounded shadow-md hover:shadow-lg outline-none focus:outline-none mb-1 ease-linear transition-all duration-150"
                     type="button"
                     id="set-time-to-1730"
             >
@@ -123,7 +123,7 @@
             </button>
         </div>
         <input type="text" placeholder="Time remaining" name="away-team" id="time-remaining-input"
-               class="text-3xl px-3 py-3 ml-10 mr-10 placeholder-blueGray-300 text-blueGray-600 relative bg-white bg-white rounded text-sm border border-blueGray-300 outline-none focus:outline-none focus:ring w-full pr-10"/>
+               class="text-3xl px-3 py-3 placeholder-blueGray-300 text-blueGray-600 relative bg-white bg-white rounded text-sm border border-blueGray-300 outline-none focus:outline-none focus:ring w-full pr-10"/>
         <div class="mx-8">
             <button class="block mt-4 mx-auto flex-grow bg-indigo-700 text-white active:bg-indigo-900 font-bold uppercase text-base px-8 py-3 rounded shadow-md hover:shadow-lg outline-none focus:outline-none mb-1 ease-linear transition-all duration-150"
                     type="button"
