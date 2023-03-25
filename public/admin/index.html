@@ -20,6 +20,15 @@
         <div class="self-center py-16">
             <canvas id="qr" class="w-48 h-48"></canvas>
         </div>
+        <div class="self-center py-16">
+            <button class="block mt-4 mx-auto flex-grow bg-indigo-700 text-white active:bg-indigo-900 font-bold uppercase text-base px-8 py-3 rounded shadow-md hover:shadow-lg outline-none focus:outline-none mb-1 ease-linear transition-all duration-150"
+                    type="button"
+                    style="visibility: hidden"
+                    id="signage-btn"
+            >
+                Signage
+            </button>
+        </div>
     </form>
 </div>
 <div id="root" class="flex flex-col h-screen justify-center flex-nowrap hidden">
@@ -93,10 +102,29 @@
         </div>
     </div>
     <div class="flex-auto">
+        <div id="set-time" class="flex flex-nowrap mt-1" style="visibility: hidden">
+            <button class="ml-10 mr-10 flex-grow bg-indigo-700 text-white active:bg-indigo-900 font-bold uppercase text-base px-3 py-3 rounded shadow-md hover:shadow-lg outline-none focus:outline-none mb-1 ease-linear transition-all duration-150"
+                    type="button"
+                    id="set-time-to-3500"
+            >
+                35:00
+            </button>
+            <button class="ml-10 mr-10 flex-grow bg-indigo-700 text-white active:bg-indigo-900 font-bold uppercase text-base px-3 py-3 rounded shadow-md hover:shadow-lg outline-none focus:outline-none mb-1 ease-linear transition-all duration-150"
+                    type="button"
+                    id="set-time-to-3000"
+            >
+                30:00
+            </button>
+            <button class="ml-10 mr-10 flex-grow bg-indigo-700 text-white active:bg-indigo-900 font-bold uppercase text-base px-3 py-3 rounded shadow-md hover:shadow-lg outline-none focus:outline-none mb-1 ease-linear transition-all duration-150"
+                    type="button"
+                    id="set-time-to-1730"
+            >
+                17:30
+            </button>
+        </div>
+        <input type="text" placeholder="Time remaining" name="away-team" id="time-remaining-input"
+               class="text-3xl px-3 py-3 ml-10 mr-10 placeholder-blueGray-300 text-blueGray-600 relative bg-white bg-white rounded text-sm border border-blueGray-300 outline-none focus:outline-none focus:ring w-full pr-10"/>
         <div class="mx-8">
-            <input type="text" placeholder="Time remaining" name="away-team" id="time-remaining-input"
-                   class="text-3xl px-3 py-3 placeholder-blueGray-300 text-blueGray-600 relative bg-white bg-white rounded text-sm border border-blueGray-300 outline-none focus:outline-none focus:ring w-full pr-10"/>
-
             <button class="block mt-4 mx-auto flex-grow bg-indigo-700 text-white active:bg-indigo-900 font-bold uppercase text-base px-8 py-3 rounded shadow-md hover:shadow-lg outline-none focus:outline-none mb-1 ease-linear transition-all duration-150"
                     type="button"
                     id="time-remaining-start-stop"
