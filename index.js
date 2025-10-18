@@ -1,7 +1,14 @@
 const express = require('express');
 const app = express();
+const cors = require('cors');
 const http = require('http').Server(app);
-const io = require('socket.io')(http);
+// Add a configurable CORS origin; default to '*' to preserve current permissive behavior
+const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
+const corsOptions = {
+    origin: CORS_ORIGIN === '*' ? '*' : CORS_ORIGIN.split(',').map(s => s.trim()),
+    credentials: true
+};
+const io = require('socket.io')(http, { cors: { origin: corsOptions.origin, credentials: corsOptions.credentials } });
 const PORT = process.env.PORT || 5000
 const GDS_SECRET = process.env.GDS_SECRET || 'Secret'
 const {v4: uuidv4} = require('uuid');
@@ -12,6 +19,7 @@ const state = {}
 
 const validateToken = (token) => GDS_SECRET === token
 
+app.use(cors(corsOptions))
 app.use(express.static('public'))
 app.get('/', (req, res) => res.sendFile(__dirname + '/index.html'))
 
