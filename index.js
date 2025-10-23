@@ -132,8 +132,8 @@ io.on('connection', (socket) => {
             };
 
             const promises = [];
-            if (turnOn) promises.push(doPowerRequest(`POWER_ON_URL_${uuid}`));
-            if (turnOff) promises.push(doPowerRequest(`POWER_OFF_URL_${uuid}`));
+            if (turnOn) promises.push(doPowerRequest(`POWER_ON_URL_${uuid.replace(/-/g, '_')}`));
+            if (turnOff) promises.push(doPowerRequest(`POWER_OFF_URL_${uuid.replace(/-/g, '_')}`));
 
             Promise.all(promises).then(results => {
                 // If any succeeded return 200, otherwise return first non-200 status
