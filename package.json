@@ -11,7 +11,7 @@
     "uuid": "^8.3.2"
   },
   "scripts": {
-    "start": "node index.js"
+    "start": "node --inspect index.js"
   },
   "devDependencies": {
     "yarn": "^1.22.19"
