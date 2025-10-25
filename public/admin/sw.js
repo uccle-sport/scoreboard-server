@@ -1,5 +1,5 @@
 // Service Worker for PWA functionality
-const CACHE_NAME = 'scoreboard-v1';
+const CACHE_NAME = 'scoreboard-v2';
 const urlsToCache = [
   '/admin/',
   '/admin/index.html',
@@ -25,6 +25,17 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
+
+  // Don't intercept WebSocket upgrades or Socket.IO requests
+  // Let them pass through directly to the origin server
+  if (
+    event.request.headers.get('upgrade') === 'websocket' ||
+    url.pathname.includes('/socket.io/') ||
+    url.search.includes('EIO=') || // Engine.IO query param
+    url.search.includes('transport=') // Socket.IO transport query param
+  ) {
+    return; // Let the request pass through without service worker intervention
+  }
 
   // Cache strategy for different resource types
   event.respondWith(
