@@ -151,7 +151,7 @@ io.on('connection', (socket) => {
     })
     socket.on('sync', ({}, callback) => {
         if (validateToken(token) && state[uuid]) {
-            callback({
+            callback?.({
                 status: 200, resp: {
                     ...(state[uuid]),
                     remaining: state[uuid].paused && state[uuid].remaining ? state[uuid].remaining : (state[uuid].endDate ? Math.floor((state[uuid].endDate - +new Date()) / 1000) : undefined), //Always recompute remaining
