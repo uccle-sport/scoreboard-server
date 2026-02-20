@@ -95,7 +95,7 @@ io.on('connection', (socket) => {
         }
     })
 
-    socket.on('power', ({turnOn, turnOff}, callback) => {
+    socket.on('power', ({turnOn, turnOff, mode}, callback) => {
         if (state[uuid]) {
             // handle turnOn and turnOff with support for bearer token in parsedCommand
             const doPowerRequest = (envVarKey) => {
@@ -132,8 +132,14 @@ io.on('connection', (socket) => {
             };
 
             const promises = [];
-            if (turnOn) promises.push(doPowerRequest(`POWER_ON_URL_${uuid.replace(/-/g, '_')}`));
-            if (turnOff) promises.push(doPowerRequest(`POWER_OFF_URL_${uuid.replace(/-/g, '_')}`));
+            if (mode) {
+                if (mode === 'score') promises.push(doPowerRequest(`POWER_ON_URL_${uuid.replace(/-/g, '_')}`));
+                if (mode === 'off') promises.push(doPowerRequest(`POWER_OFF_URL_${uuid.replace(/-/g, '_')}`));
+                if (mode === 'signage') promises.push(doPowerRequest(`SIGNAGE_URL_${uuid.replace(/-/g, '_')}`));
+            } else {
+                if (turnOn) promises.push(doPowerRequest(`POWER_ON_URL_${uuid.replace(/-/g, '_')}`));
+                if (turnOff) promises.push(doPowerRequest(`POWER_OFF_URL_${uuid.replace(/-/g, '_')}`));
+            }
 
             Promise.all(promises).then(results => {
                 // If any succeeded return 200, otherwise return first non-200 status
