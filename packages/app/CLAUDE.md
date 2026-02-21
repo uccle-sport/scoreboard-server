@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Scoreboard management single page app for live sports (basketball-style quarters/halves). This is the **admin interface** that controls a remote scoreboard display via Socket.IO. It is served under the `/admin/` base path and deployed by rsyncing the build output to `../scoreboard-server/public/admin/`.
+Scoreboard management single page app for live sports (basketball-style quarters/halves). This is the **admin interface** that controls a remote scoreboard display via Socket.IO. It is served under the `/admin/` base path. Build output goes directly to `packages/server/public/admin/` via Vite's `build.outDir`.
 
 ## Commands
 
 - `yarn dev` — Start dev server on port 8080
-- `yarn build` — Production build + rsync to scoreboard-server
-- `yarn build:dev` — Development build (no rsync)
+- `yarn build` — Production build (output to packages/server/public/admin/)
+- `yarn build:dev` — Development build
 - `yarn lint` — ESLint
 
 ## Tech Stack
