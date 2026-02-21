@@ -1,0 +1,79 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    --background: 220 25% 12%;
+    --foreground: 0 0% 95%;
+
+    --card: 220 20% 16%;
+    --card-foreground: 0 0% 95%;
+
+    --popover: 220 20% 16%;
+    --popover-foreground: 0 0% 95%;
+
+    --primary: 210 70% 45%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 20% 22%;
+    --secondary-foreground: 0 0% 95%;
+
+    --muted: 220 20% 20%;
+    --muted-foreground: 210 15% 65%;
+
+    --accent: 190 60% 50%;
+    --accent-foreground: 220 25% 12%;
+
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 20% 25%;
+    --input: 220 20% 22%;
+    --ring: 210 70% 45%;
+
+    --radius: 0.75rem;
+
+    /* Sport scoreboard specific */
+    --score-glow: 210 70% 45%;
+    --neon-glow: 190 60% 50%;
+    
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(210 70% 45%), hsl(190 60% 50%));
+    --gradient-bg: linear-gradient(180deg, hsl(220 25% 12%), hsl(220 25% 8%));
+    
+    /* Shadows */
+    --shadow-glow: 0 0 15px hsl(210 70% 45% / 0.2);
+    --shadow-neon: 0 0 10px hsl(190 60% 50% / 0.25);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    background: linear-gradient(180deg, hsl(220 25% 12%), hsl(220 25% 8%));
+    min-height: 100vh;
+  }
+}
+
+@layer utilities {
+  .glow-primary {
+    box-shadow: 0 0 15px hsl(210 70% 45% / 0.2);
+  }
+  
+  .glow-accent {
+    box-shadow: 0 0 10px hsl(190 60% 50% / 0.25);
+  }
+
+  .text-glow {
+    text-shadow: 0 0 10px hsl(210 70% 45% / 0.3);
+  }
+}
