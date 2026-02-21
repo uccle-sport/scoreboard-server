@@ -1,7 +1,9 @@
 {
   "name": "scoreboard",
   "private": true,
-  "workspaces": ["packages/*"],
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "dev": "yarn workspaces foreach -Api -j unlimited run dev",
     "build": "yarn workspace @scoreboard/app run build && yarn workspace @scoreboard/server run build",
