@@ -57,14 +57,7 @@ const Index = () => {
                         'sync',
                         ({status, resp}) => {
                             if (status === 200 && resp.remaining != undefined) {
-                                setLatestRev(resp.rev);
-                                setHomeScore(resp.home);
-                                setAwayScore(resp.away);
-                                setPaused(resp.paused);
-                                if (resp.homeTeam) setHomeTeam(resp.homeTeam);
-                                if (resp.awayTeam) setAwayTeam(resp.awayTeam);
-                                setRemaining(resp.remaining);
-                                setEndDate(new Date(Date.now() + resp.remaining * 1000));
+                                onUpdate(resp);
                             }
                         }
                     );
