@@ -5,6 +5,7 @@ export interface ScoreboardState {
   endDate?: number;
   remaining?: number;
   paused?: boolean;
+  mode?: "score" | "off" | "signage";
   [key: string]: unknown;
 }
 

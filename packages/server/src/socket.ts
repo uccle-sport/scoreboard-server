@@ -106,6 +106,13 @@ export function setupSocketHandlers(io: Server): void {
 
     socket.on("power", ({ turnOn, turnOff, mode }: PowerMessage, callback) => {
       if (state[uuid]) {
+        // Persist the mode in state so sync returns it
+        const resolvedMode: "score" | "off" | "signage" | undefined =
+          mode ?? (turnOn ? "score" : turnOff ? "off" : undefined);
+        if (resolvedMode) {
+          state[uuid] = { ...state[uuid], mode: resolvedMode };
+        }
+
         const sanitizedUuid = uuid.replace(/-/g, "_");
         const promises: Promise<{ status: number }>[] = [];
 
