@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +10,7 @@ interface SettingsScreenProps {
   onHomeTeamChange: (name: string) => void;
   onAwayTeamChange: (name: string) => void;
   onActiveChange: (mode: "score" | "signage" | "off") => void;
+  activeMode: "score" | "off" | "signage";
 }
 
 const SettingsScreen = ({
@@ -19,12 +19,11 @@ const SettingsScreen = ({
   onHomeTeamChange,
   onAwayTeamChange,
   onActiveChange,
+  activeMode,
 }: SettingsScreenProps) => {
-  const [activeMode, setActiveMode] = useState<"score" | "signage" | "off">("off");
   const appUrl = window.location.href;
 
   const handleModeChange = (mode: "score" | "signage" | "off") => {
-    setActiveMode(mode);
     onActiveChange(mode);
   };
 

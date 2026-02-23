@@ -14,6 +14,7 @@ interface Message {
     period?: string;
     homeTeam?: string;
     awayTeam?: string;
+    mode?: "score" | "off" | "signage";
 }
 
 const params = new URLSearchParams(window.location.href.split('?')[1]);
@@ -29,6 +30,7 @@ const Index = () => {
     const [remaining, setRemaining] = useState(35 * 60);
     const [endDate, setEndDate] = useState<Date>(new Date(+new Date() + remaining * 1000));
     const [period, setPeriod] = useState("1st Quarter");
+    const [activeMode, setActiveMode] = useState<"score" | "off" | "signage">("off");
 
     // Track when a change originates locally (from UI) so we can emit to the server
     const localChangeRef = useRef(false);
@@ -94,6 +96,7 @@ const Index = () => {
             setRemaining(Math.max(0, msg.remaining));
             setEndDate(new Date(Date.now() + Math.max(0, msg.remaining) * 1000));
         }
+        if (msg.mode) setActiveMode(msg.mode);
     };
 
     const onPing = () => {
@@ -148,6 +151,7 @@ const Index = () => {
         setAwayTeam(val);
     };
     const handleActiveChange = (val: "score" | "signage" | "off") => {
+        setActiveMode(val);
         socket.emit('power', {turnOn: val !== "off", turnOff: val === "off", mode: val});
     };
     const handlePausedChange = (val: boolean) => {
@@ -185,6 +189,7 @@ const Index = () => {
                     onHomeTeamChange={handleHomeTeamChange}
                     onAwayTeamChange={handleAwayTeamChange}
                     onActiveChange={handleActiveChange}
+                    activeMode={activeMode}
                 />
             )}
             <BottomNav activeTab={activeTab} onTabChange={setActiveTab}/>
