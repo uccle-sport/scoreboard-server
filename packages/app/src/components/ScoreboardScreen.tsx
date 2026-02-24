@@ -68,9 +68,10 @@ const ScoreboardScreen = ({
                             <h2 className="text-lg font-bold uppercase tracking-wide text-primary min-h-14">
                                 {homeTeam}
                             </h2>
-                            <div className="text-6xl font-black text-glow">{homeScore}</div>
+                            <div data-testid="home-score" className="text-6xl font-black text-glow">{homeScore}</div>
                             <div className="flex gap-2 justify-center">
                                 <Button
+                                    data-testid="home-minus"
                                     size="sm"
                                     variant="outline"
                                     className="border-primary text-primary hover:bg-primary hover:text-primary-foreground glow-primary w-[30%]"
@@ -79,6 +80,7 @@ const ScoreboardScreen = ({
                                     <Minus className="h-5 w-5"/>
                                 </Button>
                                 <Button
+                                    data-testid="home-plus"
                                     size="sm"
                                     className="bg-primary text-primary-foreground hover:bg-primary/90 glow-primary w-[30%]"
                                     onClick={() => onHomeScoreChange(homeScore + 1)}
@@ -90,13 +92,14 @@ const ScoreboardScreen = ({
 
                         {/* Center - Time & Period */}
                         <div className="flex flex-col justify-between items-center h-full">
-                            <div className="text-lg font-semibold text-accent uppercase tracking-wider text-center">
+                            <div data-testid="period" className="text-lg font-semibold text-accent uppercase tracking-wider text-center">
                                 {period}
                             </div>
-                            <div className="text-5xl font-mono font-bold text-accent text-glow text-center">
+                            <div data-testid="timer-display" className="text-5xl font-mono font-bold text-accent text-glow text-center">
                                 {secondsToTime(time)}
                             </div>
                             <Button
+                                data-testid="timer-toggle"
                                 size="lg"
                                 variant={!paused ? "destructive" : "default"}
                                 className={!paused ? "min-w-24" : "min-w-24 bg-accent text-accent-foreground hover:bg-accent/90 glow-accent"}
@@ -111,9 +114,10 @@ const ScoreboardScreen = ({
                             <h2 className="text-lg font-bold uppercase tracking-wide text-primary min-h-14">
                                 {awayTeam}
                             </h2>
-                            <div className="text-6xl font-black text-glow">{awayScore}</div>
+                            <div data-testid="away-score" className="text-6xl font-black text-glow">{awayScore}</div>
                             <div className="flex gap-2 justify-center">
                                 <Button
+                                    data-testid="away-minus"
                                     size="sm"
                                     variant="outline"
                                     className="border-primary text-primary hover:bg-primary hover:text-primary-foreground glow-primary w-[30%]"
@@ -122,6 +126,7 @@ const ScoreboardScreen = ({
                                     <Minus className="h-5 w-5"/>
                                 </Button>
                                 <Button
+                                    data-testid="away-plus"
                                     size="sm"
                                     className="bg-primary text-primary-foreground hover:bg-primary/90 glow-primary w-[30%]"
                                     onClick={() => onAwayScoreChange(awayScore + 1)}

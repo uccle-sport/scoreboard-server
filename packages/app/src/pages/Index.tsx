@@ -55,6 +55,7 @@ const Index = () => {
                     // refresh state
                     ioSocket.emit(
                         'sync',
+                        {},
                         ({status, resp}) => {
                             if (status === 200 && resp.remaining != undefined) {
                                 onUpdate(resp);

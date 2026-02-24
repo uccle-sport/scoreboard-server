@@ -23,6 +23,7 @@ const BottomNav = ({ activeTab, onTabChange }: BottomNavProps) => {
           <span className="text-xs font-semibold">Scoreboard</span>
         </Button>
         <Button
+          data-testid="nav-settings"
           variant={activeTab === "settings" ? "default" : "ghost"}
           className={
             activeTab === "settings"

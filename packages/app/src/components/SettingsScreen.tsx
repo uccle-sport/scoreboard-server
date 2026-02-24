@@ -83,6 +83,7 @@ const SettingsScreen = ({
             </Label>
             <Input
               id="home-team"
+              data-testid="home-team-input"
               value={homeTeam}
               onChange={(e) => onHomeTeamChange(e.target.value)}
               className="bg-input border-border text-lg font-semibold"
@@ -96,6 +97,7 @@ const SettingsScreen = ({
             </Label>
             <Input
               id="away-team"
+              data-testid="away-team-input"
               value={awayTeam}
               onChange={(e) => onAwayTeamChange(e.target.value)}
               className="bg-input border-border text-lg font-semibold"
