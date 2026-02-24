@@ -1,16 +1,22 @@
 # Scoreboard
 
-A real-time sports scoreboard system for live basketball-style events. An operator uses the **admin app** on a phone or tablet to control scores and a countdown timer; the **display page** renders the live scoreboard on a screen or projector, updating instantly via WebSockets.
+A real-time sports scoreboard system for live hockey events. An operator uses the **admin app** on a phone or tablet to control scores and a countdown timer; the **display app** renders the live scoreboard on a big screen or projector, updating instantly via WebSockets.
 
 ```
-┌─────────────────┐        Socket.IO        ┌──────────────────┐
+┌─────────────────┐        Socket.IO         ┌──────────────────┐
 │   Admin App     │ ──── update/sync ──────► │    Server        │
-│ (React PWA)     │ ◄─── broadcast ──────── │ (Express+Socket) │
+│ (React PWA)     │ ◄─── broadcast ───────── │ (Express+Socket) │
 └─────────────────┘                          └────────┬─────────┘
                                                       │ serves
                                              ┌────────▼─────────┐
-                                             │  Display Page    │
-                                             │ (scoreboard.html)│
+                                             │  Display App     │
+                                             │  (React, port /) │
+                                             └──────────────────┘
+                                                      ▲
+                                                      │ Socket.IO
+                                             ┌────────┴─────────┐
+                                             │  Display Client  │
+                                             │  (big screen)    │
                                              └──────────────────┘
 ```
 
@@ -18,7 +24,7 @@ A real-time sports scoreboard system for live basketball-style events. An operat
 
 ## Repository Structure
 
-This is a **Yarn workspaces monorepo** with two packages:
+This is a **Yarn workspaces monorepo** with three packages:
 
 ```
 scoreboard-server/
@@ -31,16 +37,20 @@ scoreboard-server/
 │   │   │   ├── state.ts     # In-memory scoreboard state
 │   │   │   ├── config.ts    # Environment variables
 │   │   │   └── types.ts     # Shared TypeScript interfaces
-│   │   └── public/          # Static files served by Express
-│   │       ├── index.html   # Display page (the big screen)
-│   │       └── admin/       # Built admin app (generated, do not edit)
-│   └── app/             # React admin interface (TypeScript + Vite)
+│   │   └── public/          # Static files served by Express (generated)
+│   │       ├── index.html   # Display app entry (built by packages/display)
+│   │       └── admin/       # Admin app (built by packages/app)
+│   ├── app/             # React admin interface (TypeScript + Vite)
+│   │   └── src/
+│   │       ├── pages/Index.tsx         # All scoreboard state lives here
+│   │       ├── hooks/use-socket.tsx    # Socket.IO singleton
+│   │       └── components/
+│   │           ├── ScoreboardScreen.tsx
+│   │           └── SettingsScreen.tsx
+│   └── display/         # React big-screen display app (TypeScript + Vite)
 │       └── src/
-│           ├── pages/Index.tsx         # All scoreboard state lives here
-│           ├── hooks/use-socket.tsx    # Socket.IO singleton
 │           └── components/
-│               ├── ScoreboardScreen.tsx
-│               └── SettingsScreen.tsx
+│               └── Scoreboard.tsx      # Full-screen scoreboard display
 ├── tsconfig.base.json   # Shared TypeScript config
 ├── package.json         # Workspace root
 └── CLAUDE.md            # Guidance for AI assistants
@@ -70,26 +80,27 @@ corepack enable
 git clone <repo-url>
 cd scoreboard-server
 
-# Install all dependencies (both packages at once)
+# Install all dependencies (all packages at once)
 yarn install
 ```
 
 ### Running in Development
 
 ```bash
-# Start both server and app dev servers simultaneously
+# Start all three packages in dev mode simultaneously
 yarn dev
 ```
 
 - **Server** runs on `http://localhost:5000` (auto-restarts on file changes via `tsx watch`)
 - **Admin app** dev server runs on `http://localhost:8080/admin/`
-- **Display page** is served from `http://localhost:5000/`
+- **Display app** dev server runs on `http://localhost:8081/`
 
 To run each package individually:
 
 ```bash
-yarn workspace @scoreboard/server run dev   # server only
-yarn workspace @scoreboard/app run dev      # app only
+yarn workspace @scoreboard/server run dev    # server only
+yarn workspace @scoreboard/app run dev       # admin app only (port 8080)
+yarn workspace @scoreboard/display run dev   # display app only (port 8081)
 ```
 
 ### Opening the Admin App in Development
@@ -102,10 +113,18 @@ http://localhost:8080/admin/?uuid=<your-scoreboard-uuid>&secret=Secret
 - `uuid` — a UUID identifying the scoreboard (create any UUID, e.g. `11111111-1111-1111-1111-111111111111` for local dev)
 - `secret` — must match the server's `GDS_SECRET` env var (default: `Secret`)
 
-### Opening the Display Page
+### Opening the Display App
+
+In development the display app has its own dev server:
 
 ```
-http://localhost:5000/?uuid=<your-scoreboard-uuid>&token=Secret
+http://localhost:8081/?uuid=<your-scoreboard-uuid>&secret=Secret
+```
+
+In production (after `yarn build`) it is served by the Express server at:
+
+```
+http://localhost:5000/?uuid=<your-scoreboard-uuid>&secret=Secret
 ```
 
 Changes made in the admin app appear here in real time.
@@ -115,13 +134,16 @@ Changes made in the admin app appear here in real time.
 ## Building for Production
 
 ```bash
-# Build app then compile server
+# Build all packages in order, then compile server
 yarn build
 ```
 
-This:
-1. Runs `vite build` in `packages/app/` → outputs to `packages/server/public/admin/`
-2. Runs `tsc` in `packages/server/` → outputs compiled JS to `packages/server/dist/`
+This runs three steps in order:
+1. `vite build` in `packages/display/` → wipes `packages/server/public/` and outputs the display app
+2. `vite build` in `packages/app/` → outputs to `packages/server/public/admin/` (preserves display output)
+3. `tsc` in `packages/server/` → outputs compiled JS to `packages/server/dist/`
+
+The build order matters: the display build uses `emptyOutDir: true` to clear stale hashed assets, and the app build runs after to restore `public/admin/`.
 
 ```bash
 # Start the compiled server
@@ -200,15 +222,25 @@ The countdown timer lives **entirely in the client** (admin app). When running:
 When paused:
 - `remaining` is stored explicitly; `endDate` is cleared
 
-### Admin App URL Parameters
+### URL Parameters
 
-The admin app reads configuration from query params at load time:
+Both client apps read configuration from query params at load time.
+
+**Admin app** (`/admin/`):
 
 | Param | Required | Description |
 |-------|----------|-------------|
 | `uuid` | yes | Scoreboard UUID to manage |
 | `secret` | yes | Authentication token (`GDS_SECRET`) |
 | `socket-io-url` | no | Override server URL (useful if app is hosted separately) |
+
+**Display app** (`/`):
+
+| Param | Required | Description |
+|-------|----------|-------------|
+| `uuid` | yes | Scoreboard UUID to display |
+| `secret` | yes | Authentication token (`GDS_SECRET`) |
+| `socket-io-url` | no | Override server URL |
 
 ---
 
@@ -236,6 +268,17 @@ The admin app reads configuration from query params at load time:
 | Forms | React Hook Form + Zod |
 | Real-time | Socket.IO client 4.8 |
 
+### Display (`packages/display`)
+
+| | |
+|-|-|
+| Framework | React 18 |
+| Language | TypeScript 5 |
+| Build | Vite 5 + SWC |
+| UI | shadcn/ui + Tailwind CSS |
+| Real-time | Socket.IO client |
+| Dev port | 8081 |
+
 ---
 
 ## Making Changes
@@ -262,9 +305,16 @@ Key files:
 - **Socket singleton** → `packages/app/src/hooks/use-socket.tsx`
 - **Add a shadcn/ui component** → `npx shadcn-ui@latest add <component>` in `packages/app/`
 
-### Display page
+### Display app changes
 
-The display page (`packages/server/public/index.html`) is a standalone HTML file with vanilla JS. Edit it directly — no build step required.
+Edit files in `packages/display/src/`. Vite HMR updates the browser instantly on the display dev server (`http://localhost:8081/`).
+
+Key files:
+
+- **Scoreboard layout and rendering** → `packages/display/src/components/Scoreboard.tsx`
+- **Socket.IO connection and state sync** → also in `Scoreboard.tsx` (single-component app)
+
+The display app URL params (`uuid`, `secret`, `socket-io-url`) are read from `window.location.search` at load time.
 
 ---
 
@@ -284,7 +334,7 @@ http://localhost:8080/admin/?uuid=...&secret=...&socket-io-url=https://your-serv
 
 ### Deploy
 
-1. `yarn build` — produces `packages/server/dist/` + updated `packages/server/public/admin/`
+1. `yarn build` — produces `packages/server/dist/` + populated `packages/server/public/` (display app at `/`, admin app at `/admin/`)
 2. Copy `packages/server/` to your host (excluding `node_modules`)
 3. Run `yarn install --production` on the host, then `node dist/index.js`
 
