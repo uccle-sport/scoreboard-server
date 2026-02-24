@@ -13,23 +13,15 @@ if (typeof nodeCrypto.hash !== 'function') {
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
-import { componentTagger } from "lovable-tagger";
-import legacy from "@vitejs/plugin-legacy";
 
-export default defineConfig(({ mode }) => ({
+export default defineConfig(({ mode: _mode }) => ({
   server: {
     host: "::",
     port: 8081,
   },
   plugins: [
     react(),
-    mode === "development" && componentTagger(),
-    mode !== "development" &&
-      legacy({
-        targets: ["ie >= 11"],
-        additionalLegacyPolyfills: ["regenerator-runtime/runtime"],
-      }),
-  ].filter(Boolean),
+  ],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

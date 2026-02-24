@@ -64,8 +64,8 @@ const Scoreboard = () => {
 
         if (payload.remaining !== undefined) {
             const rem = Math.floor(payload.remaining);
-            setRemaining(Math.max(rem, 60))
-            remainingRef.current = Math.max(rem, 60);
+            setRemaining(Math.max(rem, 0))
+            remainingRef.current = Math.max(rem, 0);
             const newEnd = new Date(+new Date() + rem * 1000)
             setEndDate(newEnd)
             endDateRef.current = newEnd;
@@ -74,10 +74,10 @@ const Scoreboard = () => {
 
     useInterval(() => {
         setDisplayedTime(formatTime(new Date()));
-        if (paused) {
-            setEndDate(new Date(+new Date() + remaining * 1000))
+        if (pausedRef.current) {
+            setEndDate(new Date(+new Date() + remainingRef.current * 1000))
         } else {
-            setRemaining(Math.max(Math.floor(((+endDate) - (+new Date())) / 1000), 60))
+            setRemaining(Math.max(Math.floor(((+endDateRef.current) - (+new Date())) / 1000), 0))
         }
     }, 1000);
 
