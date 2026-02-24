@@ -60,10 +60,10 @@ scoreboard-server/
 
 ## Prerequisites
 
-| Tool | Version | Notes |
-|------|---------|-------|
-| Node.js | v18+ (v22 recommended) | |
-| Corepack | bundled with Node | Manages Yarn version |
+| Tool     | Version                | Notes                |
+|----------|------------------------|----------------------|
+| Node.js  | v18+ (v22 recommended) |                      |
+| Corepack | bundled with Node      | Manages Yarn version |
 
 Enable Corepack (once, system-wide):
 
@@ -156,14 +156,14 @@ yarn start
 
 All variables are optional; defaults are shown.
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT` | `5000` | Port the server listens on |
-| `GDS_SECRET` | `Secret` | Shared secret for authenticating clients |
-| `CORS_ORIGIN` | `*` | Allowed CORS origin(s), comma-separated |
-| `POWER_ON_URL_<UUID>` | — | JSON config for turning on a display by UUID |
-| `POWER_OFF_URL_<UUID>` | — | JSON config for turning off a display by UUID |
-| `SIGNAGE_URL_<UUID>` | — | JSON config for switching a display to signage mode |
+| Variable               | Default  | Description                                         |
+|------------------------|----------|-----------------------------------------------------|
+| `PORT`                 | `5000`   | Port the server listens on                          |
+| `GDS_SECRET`           | `Secret` | Shared secret for authenticating clients            |
+| `CORS_ORIGIN`          | `*`      | Allowed CORS origin(s), comma-separated             |
+| `POWER_ON_URL_<UUID>`  | —        | JSON config for turning on a display by UUID        |
+| `POWER_OFF_URL_<UUID>` | —        | JSON config for turning off a display by UUID       |
+| `SIGNAGE_URL_<UUID>`   | —        | JSON config for switching a display to signage mode |
 
 The UUID env vars use underscores in place of hyphens (e.g., for UUID `abc-123`, the var name is `POWER_ON_URL_abc_123`).
 
@@ -205,13 +205,13 @@ Every state update carries the `rev` the client last saw. If the server's curren
 
 ### Socket.IO Events
 
-| Event | Direction | Description |
-|-------|-----------|-------------|
-| `update` | client → server → clients | Send a state change; server broadcasts to all display clients |
-| `sync` | client → server | Request full current state (used after a 409) |
-| `power` | client → server | Trigger power on/off/signage for the physical display |
-| `ping` | client → server | Keep-alive |
-| `disconnect` | — | Server removes the socket from the scoreboard's client list |
+| Event        | Direction                 | Description                                                   |
+|--------------|---------------------------|---------------------------------------------------------------|
+| `update`     | client → server → clients | Send a state change; server broadcasts to all display clients |
+| `sync`       | client → server           | Request full current state (used after a 409)                 |
+| `power`      | client → server           | Trigger power on/off/signage for the physical display         |
+| `ping`       | client → server           | Keep-alive                                                    |
+| `disconnect` | —                         | Server removes the socket from the scoreboard's client list   |
 
 ### Timer Logic
 
@@ -228,19 +228,19 @@ Both client apps read configuration from query params at load time.
 
 **Admin app** (`/admin/`):
 
-| Param | Required | Description |
-|-------|----------|-------------|
-| `uuid` | yes | Scoreboard UUID to manage |
-| `secret` | yes | Authentication token (`GDS_SECRET`) |
-| `socket-io-url` | no | Override server URL (useful if app is hosted separately) |
+| Param           | Required | Description                                              |
+|-----------------|----------|----------------------------------------------------------|
+| `uuid`          | yes      | Scoreboard UUID to manage                                |
+| `secret`        | yes      | Authentication token (`GDS_SECRET`)                      |
+| `socket-io-url` | no       | Override server URL (useful if app is hosted separately) |
 
 **Display app** (`/`):
 
-| Param | Required | Description |
-|-------|----------|-------------|
-| `uuid` | yes | Scoreboard UUID to display |
-| `secret` | yes | Authentication token (`GDS_SECRET`) |
-| `socket-io-url` | no | Override server URL |
+| Param           | Required | Description                         |
+|-----------------|----------|-------------------------------------|
+| `uuid`          | yes      | Scoreboard UUID to display          |
+| `secret`        | yes      | Authentication token (`GDS_SECRET`) |
+| `socket-io-url` | no       | Override server URL                 |
 
 ---
 
@@ -248,36 +248,36 @@ Both client apps read configuration from query params at load time.
 
 ### Server (`packages/server`)
 
-| | |
-|-|-|
-| Runtime | Node.js (ESM) |
-| Framework | Express 4 |
-| Real-time | Socket.IO 4.8 |
-| Language | TypeScript 5, compiled with `tsc` |
+|            |                                          |
+|------------|------------------------------------------|
+| Runtime    | Node.js (ESM)                            |
+| Framework  | Express 4                                |
+| Real-time  | Socket.IO 4.8                            |
+| Language   | TypeScript 5, compiled with `tsc`        |
 | Dev runner | `tsx watch` (no compilation step in dev) |
 
 ### App (`packages/app`)
 
-| | |
-|-|-|
-| Framework | React 18 |
-| Language | TypeScript 5 |
-| Build | Vite 5 + SWC |
-| UI | shadcn/ui + Radix UI + Tailwind CSS |
-| Icons | Lucide React |
-| Forms | React Hook Form + Zod |
-| Real-time | Socket.IO client 4.8 |
+|           |                                     |
+|-----------|-------------------------------------|
+| Framework | React 18                            |
+| Language  | TypeScript 5                        |
+| Build     | Vite 5 + SWC                        |
+| UI        | shadcn/ui + Radix UI + Tailwind CSS |
+| Icons     | Lucide React                        |
+| Forms     | React Hook Form + Zod               |
+| Real-time | Socket.IO client 4.8                |
 
 ### Display (`packages/display`)
 
-| | |
-|-|-|
-| Framework | React 18 |
-| Language | TypeScript 5 |
-| Build | Vite 5 + SWC |
-| UI | shadcn/ui + Tailwind CSS |
-| Real-time | Socket.IO client |
-| Dev port | 8081 |
+|           |                          |
+|-----------|--------------------------|
+| Framework | React 18                 |
+| Language  | TypeScript 5             |
+| Build     | Vite 5 + SWC             |
+| UI        | shadcn/ui + Tailwind CSS |
+| Real-time | Socket.IO client         |
+| Dev port  | 8081                     |
 
 ---
 
