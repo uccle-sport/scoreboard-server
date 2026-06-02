@@ -10,17 +10,19 @@ let socket: Socket | null = null;
 function getSocket() {
     if (!socket) {
         const socketIoUrl = params.get('socket-io-url');
-        socket = !socketIoUrl ? io({
+        // Connect over WebSocket only. The Bun-based server's engine.io HTTP
+        // long-polling rejects the POST that carries an emit buffered before the
+        // connection upgrades (the initial `sync`), so its ack never returns and
+        // channels never load. WebSocket has no such issue, and a LAN scoreboard
+        // never needs the polling fallback.
+        const options = {
+            transports: ['websocket'],
             query: {
                 token: params?.get('secret') ?? "",
                 uuid: params?.get('uuid') ?? ""
             }
-        }) : io(params.get('socket-io-url'), {
-            query: {
-                token: params?.get('secret') ?? "",
-                uuid: params?.get('uuid') ?? ""
-            }
-        })
+        };
+        socket = !socketIoUrl ? io(options) : io(socketIoUrl, options);
     }
     return socket;
 }
