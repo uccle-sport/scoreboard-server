@@ -4,7 +4,6 @@
 // production the real environment is used instead.
 try {
   process.loadEnvFile();
-  console.log(JSON.stringify(process.env), null, " ")
 } catch {
   console.error("No .env file present")
   // No .env file present — rely on the real environment.
