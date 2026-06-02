@@ -24,7 +24,7 @@ A real-time sports scoreboard system for live hockey events. An operator uses th
 
 ## Repository Structure
 
-This is a **Yarn workspaces monorepo** with three packages:
+This is a **Bun workspaces monorepo** with three packages:
 
 ```
 scoreboard-server/
@@ -60,15 +60,14 @@ scoreboard-server/
 
 ## Prerequisites
 
-| Tool     | Version                | Notes                |
-|----------|------------------------|----------------------|
-| Node.js  | v18+ (v22 recommended) |                      |
-| Corepack | bundled with Node      | Manages Yarn version |
+| Tool | Version          | Notes                                          |
+|------|------------------|------------------------------------------------|
+| Bun  | v1.2+ (1.3 used) | Runtime, package manager, and script runner    |
 
-Enable Corepack (once, system-wide):
+Install Bun (once, system-wide):
 
 ```bash
-corepack enable
+curl -fsSL https://bun.sh/install | bash
 ```
 
 ---
@@ -81,26 +80,26 @@ git clone <repo-url>
 cd scoreboard-server
 
 # Install all dependencies (all packages at once)
-yarn install
+bun install
 ```
 
 ### Running in Development
 
 ```bash
 # Start all three packages in dev mode simultaneously
-yarn dev
+bun run dev
 ```
 
-- **Server** runs on `http://localhost:5000` (auto-restarts on file changes via `tsx watch`)
+- **Server** runs on `http://localhost:5000` (auto-restarts on file changes via `bun --watch`)
 - **Admin app** dev server runs on `http://localhost:8080/admin/`
 - **Display app** dev server runs on `http://localhost:8081/`
 
 To run each package individually:
 
 ```bash
-yarn workspace @scoreboard/server run dev    # server only
-yarn workspace @scoreboard/app run dev       # admin app only (port 8080)
-yarn workspace @scoreboard/display run dev   # display app only (port 8081)
+bun run --filter @scoreboard/server dev    # server only
+bun run --filter @scoreboard/app dev       # admin app only (port 8080)
+bun run --filter @scoreboard/display dev   # display app only (port 8081)
 ```
 
 ### Opening the Admin App in Development
@@ -121,7 +120,7 @@ In development the display app has its own dev server:
 http://localhost:8081/?uuid=<your-scoreboard-uuid>&secret=Secret
 ```
 
-In production (after `yarn build`) it is served by the Express server at:
+In production (after `bun run build`) it is served by the Express server at:
 
 ```
 http://localhost:5000/?uuid=<your-scoreboard-uuid>&secret=Secret
@@ -134,21 +133,40 @@ Changes made in the admin app appear here in real time.
 ## Building for Production
 
 ```bash
-# Build all packages in order, then compile server
-yarn build
+# Build the frontends in order, then type-check the server
+bun run build
 ```
 
 This runs three steps in order:
 1. `vite build` in `packages/display/` → wipes `packages/server/public/` and outputs the display app
 2. `vite build` in `packages/app/` → outputs to `packages/server/public/admin/` (preserves display output)
-3. `tsc` in `packages/server/` → outputs compiled JS to `packages/server/dist/`
+3. `tsc --noEmit` in `packages/server/` → type-checks the server (Bun runs the `.ts` sources directly, so there is no compile-to-`dist` step)
 
 The build order matters: the display build uses `emptyOutDir: true` to clear stale hashed assets, and the app build runs after to restore `public/admin/`.
 
 ```bash
-# Start the compiled server
-yarn start
+# Start the server (Bun runs the TypeScript entry point directly)
+bun run start
 ```
+
+---
+
+## Docker
+
+The repo-root `Dockerfile` builds a self-contained server image. It is a multi-stage
+build that compiles both frontends into `packages/server/public`, then runs the
+server with Bun on an `alpine-glibc` base with the Bun binary copied in.
+
+```bash
+# Build from the repository root (the context must include all workspaces)
+docker build -t scoreboard-server .
+
+# Run it
+docker run -p 5000:5000 -e GDS_SECRET=your-secret scoreboard-server
+```
+
+The image serves the display app at `/`, the admin app at `/admin/`, and the
+Socket.IO/API endpoints — all on `PORT` (default `5000`).
 
 ---
 
@@ -161,23 +179,71 @@ All variables are optional; defaults are shown.
 | `PORT`                 | `5000`   | Port the server listens on                          |
 | `GDS_SECRET`           | `Secret` | Shared secret for authenticating clients            |
 | `CORS_ORIGIN`          | `*`      | Allowed CORS origin(s), comma-separated             |
-| `POWER_ON_URL_<UUID>`  | —        | JSON config for turning on a display by UUID        |
-| `POWER_OFF_URL_<UUID>` | —        | JSON config for turning off a display by UUID       |
-| `SIGNAGE_URL_<UUID>`   | —        | JSON config for switching a display to signage mode |
+| `FLOWR_BEARER`             | —        | Bearer token injected into every Flowr request (webhooks, channel search, logo proxy) |
+| `FLOWR_LOGO_URL_TEMPLATE`  | —        | Logo image URL template (`{logo}` = numeric view id), used by the `/channel-logo` proxy |
+| `POWER_ON_URL_<UUID>`      | —        | JSON config for powering a display on by UUID                       |
+| `POWER_OFF_URL_<UUID>`     | —        | JSON config for powering a display off by UUID                      |
+| `SCOREBOARD_URL_<UUID>`    | —        | JSON config for switching a display's source to the scoreboard      |
+| `TV_URL_<UUID>`            | —        | JSON config for switching a display's source to TV (supports `{channel}`)      |
+| `SIGNAGE_URL_<UUID>`       | —        | JSON config for switching a display's source to signage (supports `{channel}`) |
+| `VOLUME_URL_<UUID>`        | —        | JSON config for setting the volume of the current channel (uses `message.volume`) |
+| `TV_CHANNELS_<UUID>`       | `[]`     | JSON request config for loading selectable TV channels       |
+| `SIGNAGE_CHANNELS_<UUID>`  | `[]`     | JSON request config for loading selectable signage channels  |
 
 The UUID env vars use underscores in place of hyphens (e.g., for UUID `abc-123`, the var name is `POWER_ON_URL_abc_123`).
 
-### Power Control Config Format
+### Power / Display Control Config Format
 
-The power URL vars accept a JSON string:
+The power and display URL vars accept a JSON string describing the request the
+server sends to the device controller (Flowr). The `{channel}` placeholder inside
+`body.message.route` is replaced with the URL-encoded channel id when switching to
+`tv` or `signage`; it is left untouched for power on/off and scoreboard requests,
+which receive no channel. The requested volume (0..100, from the `display` or
+`volume` event) is written into `body.message.volume` when provided. The bearer is
+injected from `FLOWR_BEARER` — do not embed it in the config.
 
 ```json
 {
-  "url": "https://your-smart-device/api/on",
+  "url": "https://device-controller/api/send",
   "method": "POST",
   "headers": { "Content-Type": "application/json" },
-  "bearer": "optional-bearer-token",
-  "body": { "state": "on" }
+  "body": {
+    "devices": ["device-uuid"],
+    "message": { "type": "PLAY", "route": "{channel}", "volume": null, "lang": "en" },
+    "shouldBeAcknowledged": true,
+    "shouldWakeUpDevice": true
+  }
+}
+```
+
+### Channel List Config Format
+
+`TV_CHANNELS_<UUID>` / `SIGNAGE_CHANNELS_<UUID>` hold a JSON request config used to
+fetch the list of selectable channels from the Flowr channel-search API. The server
+POSTs the request (bearer injected from `FLOWR_BEARER`), then maps each result to
+`{ id: channelUuid, label: name, imageUrl? }`. `channelType` optionally filters
+results. Each `imageUrl` points at the server's **`/channel-logo/<logo>` proxy**,
+which rebuilds the Flowr image URL from `FLOWR_LOGO_URL_TEMPLATE` and fetches it with
+the bearer attached — the browser `<img>` can't send the `Authorization` header, so a
+direct Flowr URL would `403`.
+
+```json
+{
+  "url": "https://sportlab.flowr.cloud/ozone/rest/v3/items/channel/search",
+  "method": "POST",
+  "channelType": "tv",
+  "body": {
+    "query": {
+      "$type": "BoolQuery",
+      "mustClauses": [
+        { "$type": "TenantQuery", "tenantId": "…", "mode": "OWN_AND_PARENTS" },
+        { "$type": "TermsQuery", "field": "packages", "values": ["…"] }
+      ]
+    },
+    "offset": 0,
+    "sorts": [],
+    "size": 100
+  }
 }
 ```
 
@@ -195,6 +261,10 @@ interface ScoreboardState {
   paused?: boolean;
   remaining?: number; // seconds remaining on clock
   endDate?: number;   // epoch ms when clock will reach zero (derived when running)
+  power?: "on" | "off";                          // physical screen power
+  display?: "scoreboard" | "tv" | "signage";     // active content source
+  channel?: string;                              // selected tv/signage channel id
+  volume?: number;                               // channel volume (0..100)
   [key: string]: unknown; // score, team names, period, etc.
 }
 ```
@@ -208,8 +278,10 @@ Every state update carries the `rev` the client last saw. If the server's curren
 | Event        | Direction                 | Description                                                   |
 |--------------|---------------------------|---------------------------------------------------------------|
 | `update`     | client → server → clients | Send a state change; server broadcasts to all display clients |
-| `sync`       | client → server           | Request full current state (used after a 409)                 |
-| `power`      | client → server           | Trigger power on/off/signage for the physical display         |
+| `sync`       | client → server           | Request full current state + channel lists (used after a 409) |
+| `power`      | client → server           | Turn the physical display on/off (`{ on: boolean }`)          |
+| `display`    | client → server           | Select content source + channel, optional volume (`{ display, channel?, volume? }`) |
+| `volume`     | client → server           | Set the current channel's volume 0..100 (`{ volume }`)        |
 | `ping`       | client → server           | Keep-alive                                                    |
 | `disconnect` | —                         | Server removes the socket from the scoreboard's client list   |
 
@@ -248,13 +320,14 @@ Both client apps read configuration from query params at load time.
 
 ### Server (`packages/server`)
 
-|            |                                          |
-|------------|------------------------------------------|
-| Runtime    | Node.js (ESM)                            |
-| Framework  | Express 4                                |
-| Real-time  | Socket.IO 4.8                            |
-| Language   | TypeScript 5, compiled with `tsc`        |
-| Dev runner | `tsx watch` (no compilation step in dev) |
+|            |                                                     |
+|------------|-----------------------------------------------------|
+| Runtime    | Bun (ESM)                                           |
+| Framework  | Express 4                                           |
+| Real-time  | Socket.IO 4.8                                       |
+| Language   | TypeScript 5, run directly by Bun (no compile step) |
+| Type-check | `tsc --noEmit`                                      |
+| Dev runner | `bun --watch` (auto-restart on file changes)        |
 
 ### App (`packages/app`)
 
@@ -285,7 +358,7 @@ Both client apps read configuration from query params at load time.
 
 ### Server changes
 
-Edit files in `packages/server/src/`. With `yarn dev` running, `tsx watch` restarts the server automatically.
+Edit files in `packages/server/src/`. With `bun run dev` running, `bun --watch` restarts the server automatically.
 
 Key files:
 
@@ -303,7 +376,7 @@ Key files:
 - **Settings** (team names, power toggle, QR code) → `packages/app/src/components/SettingsScreen.tsx`
 - **All state + Socket.IO glue** → `packages/app/src/pages/Index.tsx`
 - **Socket singleton** → `packages/app/src/hooks/use-socket.tsx`
-- **Add a shadcn/ui component** → `npx shadcn-ui@latest add <component>` in `packages/app/`
+- **Add a shadcn/ui component** → `bunx shadcn-ui@latest add <component>` in `packages/app/`
 
 ### Display app changes
 
@@ -334,18 +407,22 @@ http://localhost:8080/admin/?uuid=...&secret=...&socket-io-url=https://your-serv
 
 ### Deploy
 
-1. `yarn build` — produces `packages/server/dist/` + populated `packages/server/public/` (display app at `/`, admin app at `/admin/`)
-2. Copy `packages/server/` to your host (excluding `node_modules`)
-3. Run `yarn install --production` on the host, then `node dist/index.js`
+The simplest path is the Docker image (see [Docker](#docker) above).
 
-Or use the `yarn start` script from the monorepo root.
+To deploy without Docker:
+
+1. `bun run build` — populates `packages/server/public/` (display app at `/`, admin app at `/admin/`)
+2. Copy the repo to your host (excluding `node_modules`)
+3. Run `bun install --production` on the host, then `bun run --filter @scoreboard/server start`
+
+Or use the `bun run start` script from the monorepo root.
 
 ---
 
 ## Troubleshooting
 
 **Admin app can't connect to server**
-- Check that the server is running (`yarn workspace @scoreboard/server run dev`)
+- Check that the server is running (`bun run --filter @scoreboard/server dev`)
 - Verify `uuid` and `secret` query params match what the server expects
 - Check browser console for WebSocket errors
 
@@ -356,4 +433,4 @@ Or use the `yarn start` script from the monorepo root.
 - Set `PORT=5001` (or any free port) in your environment before starting the server
 
 **TypeScript errors after pulling**
-- Run `yarn install` to ensure dependencies are up to date, then `yarn workspace @scoreboard/server run build`
+- Run `bun install` to ensure dependencies are up to date, then `bun run --filter @scoreboard/server build`

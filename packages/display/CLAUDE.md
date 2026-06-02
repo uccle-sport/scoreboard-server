@@ -8,9 +8,9 @@ Served at `/` by the Express server. Build output goes to `packages/server/publi
 
 ## Commands
 
-- `yarn dev` — Start dev server on port 8081
-- `yarn build` — Production build (output to packages/server/public/)
-- `yarn lint` — ESLint
+- `bun run dev` — Start dev server on port 8081
+- `bun run build` — Production build (output to packages/server/public/)
+- `bun run lint` — ESLint
 
 ## Tech Stack
 
@@ -36,4 +36,4 @@ The component maintains `pausedRef`, `remainingRef`, and `endDateRef` to avoid s
 
 ## Build Note
 
-**Build order matters.** This package's build wipes `packages/server/public/` entirely (`emptyOutDir: true`). Always build display before app so the admin app build can restore `packages/server/public/admin/` afterwards. The root `yarn build` script enforces this order: `display → app → server`.
+**Build order matters.** This package's build wipes `packages/server/public/` entirely (`emptyOutDir: true`). Always build display before app so the admin app build can restore `packages/server/public/admin/` afterwards. The root `bun run build` script enforces this order: `display → app → server`.
