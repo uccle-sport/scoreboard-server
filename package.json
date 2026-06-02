@@ -1,6 +1,7 @@
 {
   "name": "scoreboard",
   "private": true,
+  "version": "0.0.6",
   "workspaces": [
     "packages/*"
   ],
@@ -9,7 +10,8 @@
     "dev": "bun run --filter '*' dev",
     "build": "bun run --filter @scoreboard/display build && bun run --filter @scoreboard/app build && bun run --filter @scoreboard/server build",
     "start": "bun run --filter @scoreboard/server start",
-    "test:e2e": "bun run build && bunx playwright test"
+    "test:e2e": "bun run build && bunx playwright test",
+    "package": "bun run build && docker buildx build --platform linux/amd64,linux/arm64 -t docker.ucclesport.be/scoreboard:$npm_package_version ."
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2"

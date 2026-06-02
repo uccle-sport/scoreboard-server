@@ -9,8 +9,8 @@ interface SettingsScreenProps {
   awayTeam: string;
   onHomeTeamChange: (name: string) => void;
   onAwayTeamChange: (name: string) => void;
-  onActiveChange: (mode: "score" | "signage" | "off") => void;
-  activeMode: "score" | "off" | "signage";
+  power: "on" | "off";
+  onPowerChange: (on: boolean) => void;
 }
 
 const SettingsScreen = ({
@@ -18,14 +18,10 @@ const SettingsScreen = ({
   awayTeam,
   onHomeTeamChange,
   onAwayTeamChange,
-  onActiveChange,
-  activeMode,
+  power,
+  onPowerChange,
 }: SettingsScreenProps) => {
   const appUrl = window.location.href;
-
-  const handleModeChange = (mode: "score" | "signage" | "off") => {
-    onActiveChange(mode);
-  };
 
   return (
     <div className="min-h-screen p-4 pb-24">
@@ -39,33 +35,24 @@ const SettingsScreen = ({
           <p className="text-center mt-4 text-sm text-muted-foreground break-all">{appUrl}</p>
         </Card>
 
-        {/* Scoreboard Toggle */}
+        {/* Power Control */}
         <Card className="p-6 bg-card border-border">
           <div className="space-y-4">
             <div>
-              <Label className="text-lg font-bold text-primary">
-                Scoreboard Control
-              </Label>
+              <Label className="text-lg font-bold text-primary">Power</Label>
             </div>
             <div className="flex gap-3">
               <Button
-                variant={activeMode === "score" ? "default" : "outline"}
-                className={`flex-1 ${activeMode === "score" ? "bg-primary text-primary-foreground" : "border-border"}`}
-                onClick={() => handleModeChange("score")}
+                variant={power === "on" ? "default" : "outline"}
+                className={`flex-1 ${power === "on" ? "bg-primary text-primary-foreground" : "border-border"}`}
+                onClick={() => onPowerChange(true)}
               >
-                Score
+                On
               </Button>
               <Button
-                variant={activeMode === "signage" ? "default" : "outline"}
-                className={`flex-1 ${activeMode === "signage" ? "bg-primary text-primary-foreground" : "border-border"}`}
-                onClick={() => handleModeChange("signage")}
-              >
-                Signage
-              </Button>
-              <Button
-                variant={activeMode === "off" ? "default" : "outline"}
-                className={`flex-1 ${activeMode === "off" ? "bg-primary text-primary-foreground" : "border-border"}`}
-                onClick={() => handleModeChange("off")}
+                variant={power === "off" ? "default" : "outline"}
+                className={`flex-1 ${power === "off" ? "bg-primary text-primary-foreground" : "border-border"}`}
+                onClick={() => onPowerChange(false)}
               >
                 Off
               </Button>
