@@ -1,16 +1,18 @@
 {
   "name": "scoreboard",
   "private": true,
+  "version": "0.0.6",
   "workspaces": [
     "packages/*"
   ],
   "scripts": {
-    "dev": "yarn workspaces foreach -Api -j unlimited run dev",
-    "build": "yarn workspace @scoreboard/display run build && yarn workspace @scoreboard/app run build && yarn workspace @scoreboard/server run build",
-    "start": "yarn workspace @scoreboard/server run start",
-    "test:e2e": "yarn build && npx playwright test"
+    "dev:app": "bun run --filter @scoreboard/app dev",
+    "dev": "bun run --filter '*' dev",
+    "build": "bun run --filter @scoreboard/display build && bun run --filter @scoreboard/app build && bun run --filter @scoreboard/server build",
+    "start": "bun run --filter @scoreboard/server start",
+    "test:e2e": "bun run build && bunx playwright test",
+    "package": "bun run build && docker buildx build --platform linux/amd64,linux/arm64 -t docker.ucclesport.be/scoreboard:$npm_package_version ."
   },
-  "packageManager": "yarn@4.9.2+sha512.1fc009bc09d13cfd0e19efa44cbfc2b9cf6ca61482725eb35bbc5e257e093ebf4130db6dfe15d604ff4b79efd8e1e8e99b25fa7d0a6197c9f9826358d4d65c3c",
   "devDependencies": {
     "@playwright/test": "^1.58.2"
   }

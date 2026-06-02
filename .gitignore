@@ -3,12 +3,8 @@ dist
 .DS_Store
 *.log
 test-results
+.env
+.env.*
+!.env.example
 packages/server/public/
 packages/server/dist/
-.yarn/*
-!.yarn/cache
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/sdks
-!.yarn/versions

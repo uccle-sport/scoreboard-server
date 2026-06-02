@@ -1,9 +1,23 @@
 import {useState, useEffect, useRef, useCallback} from "react";
 import ScoreboardScreen from "@/components/ScoreboardScreen";
 import SettingsScreen from "@/components/SettingsScreen";
-import BottomNav from "@/components/BottomNav";
+import DisplaySourceScreen from "@/components/DisplaySourceScreen";
+import BottomNav, { type NavTab } from "@/components/BottomNav";
 import useSocket from "@/hooks/use-socket.tsx";
 import { useInterval } from "react-use";
+
+type DisplaySource = "scoreboard" | "tv" | "signage";
+
+interface Channel {
+    id: string;
+    label: string;
+    imageUrl?: string;
+}
+
+interface Channels {
+    tv: Channel[];
+    signage: Channel[];
+}
 
 interface Message {
     rev: string;
@@ -14,13 +28,17 @@ interface Message {
     period?: string;
     homeTeam?: string;
     awayTeam?: string;
-    mode?: "score" | "off" | "signage";
+    power?: "on" | "off";
+    display?: DisplaySource;
+    channel?: string;
+    volume?: number;
+    channels?: Channels;
 }
 
 const params = new URLSearchParams(window.location.href.split('?')[1]);
 
 const Index = () => {
-    const [activeTab, setActiveTab] = useState<"scoreboard" | "settings">("scoreboard");
+    const [activeTab, setActiveTab] = useState<NavTab>("scoreboard");
     const [homeTeam, setHomeTeam] = useState("Uccle Sport");
     const [awayTeam, setAwayTeam] = useState("Visiteurs");
     const [homeScore, setHomeScore] = useState(0);
@@ -30,7 +48,10 @@ const Index = () => {
     const [remaining, setRemaining] = useState(35 * 60);
     const [endDate, setEndDate] = useState<Date>(new Date(+new Date() + remaining * 1000));
     const [period, setPeriod] = useState("1st Quarter");
-    const [activeMode, setActiveMode] = useState<"score" | "off" | "signage">("off");
+    const [power, setPower] = useState<"on" | "off">("off");
+    const [channel, setChannel] = useState<string | undefined>(undefined);
+    const [volume, setVolume] = useState<number>(50);
+    const [channels, setChannels] = useState<Channels>({ tv: [], signage: [] });
 
     // Track when a change originates locally (from UI) so we can emit to the server
     const localChangeRef = useRef(false);
@@ -90,7 +111,11 @@ const Index = () => {
             setRemaining(Math.max(0, msg.remaining));
             setEndDate(new Date(Date.now() + Math.max(0, msg.remaining) * 1000));
         }
-        if (msg.mode) setActiveMode(msg.mode);
+        if (msg.power) setPower(msg.power);
+        if (msg.display) setActiveTab(msg.display);
+        if (msg.channel !== undefined) setChannel(msg.channel);
+        if (msg.volume !== undefined) setVolume(msg.volume);
+        if (msg.channels) setChannels(msg.channels);
     };
 
     const onPing = () => {
@@ -110,6 +135,13 @@ const Index = () => {
                     if (resp.remaining != undefined) {
                         onUpdate(resp);
                     }
+                    // Power/display/channel config arrive regardless of timer state.
+                    if (resp.power) setPower(resp.power);
+                    // Reflect the current display source as the active tab.
+                    if (resp.display) setActiveTab(resp.display);
+                    if (resp.channel !== undefined) setChannel(resp.channel);
+                    if (resp.volume !== undefined) setVolume(resp.volume);
+                    if (resp.channels) setChannels(resp.channels);
                 } else {
                     console.warn('Cannot sync', status, resp);
                 }
@@ -144,9 +176,32 @@ const Index = () => {
         localChangeRef.current = true;
         setAwayTeam(val);
     };
-    const handleActiveChange = (val: "score" | "signage" | "off") => {
-        setActiveMode(val);
-        socket.emit('power', {turnOn: val !== "off", turnOff: val === "off", mode: val});
+    const handlePowerChange = (on: boolean) => {
+        setPower(on ? "on" : "off");
+        socket.emit('power', {on});
+    };
+    const handleDisplayChange = (display: DisplaySource, ch?: string) => {
+        setChannel(ch);
+        // Carry the current volume so the selected channel starts at the set level.
+        socket.emit('display', {display, channel: ch, volume});
+    };
+    const handleVolumeChange = (val: number) => {
+        setVolume(val);
+        socket.emit('volume', {volume: val});
+    };
+    // Pick the channel to use when switching to a source: keep the current one if
+    // it belongs to that source, otherwise fall back to the first available.
+    const pickChannel = (source: "tv" | "signage") => {
+        const list = source === "tv" ? channels.tv : channels.signage;
+        if (channel && list.some((c) => c.id === channel)) return channel;
+        return list[0]?.id;
+    };
+    // The bottom tab doubles as the display-source selector for scoreboard/tv/signage.
+    const handleTabChange = (tab: NavTab) => {
+        setActiveTab(tab);
+        if (tab === "scoreboard") handleDisplayChange("scoreboard");
+        else if (tab === "tv") handleDisplayChange("tv", pickChannel("tv"));
+        else if (tab === "signage") handleDisplayChange("signage", pickChannel("signage"));
     };
     const handlePausedChange = (val: boolean) => {
         localChangeRef.current = true;
@@ -161,7 +216,7 @@ const Index = () => {
 
     return (
         <div className="min-h-screen bg-background">
-            {activeTab === "scoreboard" ? (
+            {activeTab === "scoreboard" && (
                 <ScoreboardScreen
                     homeTeam={homeTeam}
                     awayTeam={awayTeam}
@@ -176,17 +231,28 @@ const Index = () => {
                     onPeriodChange={handlePeriodChange}
                     onPausedChange={handlePausedChange}
                 />
-            ) : (
+            )}
+            {(activeTab === "tv" || activeTab === "signage") && (
+                <DisplaySourceScreen
+                    source={activeTab}
+                    channels={activeTab === "tv" ? channels.tv : channels.signage}
+                    channel={channel}
+                    volume={volume}
+                    onChannelChange={(id) => handleDisplayChange(activeTab, id)}
+                    onVolumeChange={handleVolumeChange}
+                />
+            )}
+            {activeTab === "settings" && (
                 <SettingsScreen
                     homeTeam={homeTeam}
                     awayTeam={awayTeam}
                     onHomeTeamChange={handleHomeTeamChange}
                     onAwayTeamChange={handleAwayTeamChange}
-                    onActiveChange={handleActiveChange}
-                    activeMode={activeMode}
+                    power={power}
+                    onPowerChange={handlePowerChange}
                 />
             )}
-            <BottomNav activeTab={activeTab} onTabChange={setActiveTab}/>
+            <BottomNav activeTab={activeTab} onTabChange={handleTabChange}/>
         </div>
     );
 };

@@ -160,6 +160,7 @@ const Scoreboard = () => {
                                 Play Time
                             </div>
                             <div
+                                data-testid="play-time"
                                 className="text-large font-bold text-[hsl(var(--timer-text))] text-glow scoreboard-number">
                                 {formatPlayTime(remaining)}
                             </div>
@@ -182,10 +183,12 @@ const Scoreboard = () => {
                         {/* Home Team */}
                         <div className="flex-1 text-center">
                             <div
+                                data-testid="home-score"
                                 className="text-extra-large font-black text-[hsl(var(--score-text))] mb-4 scoreboard-number leading-none">
                                 {homeScore}
                             </div>
                             <div
+                                data-testid="home-team"
                                 className="text-middle font-semibold text-[hsl(var(--team-text))] uppercase tracking-wide">
                                 {homeTeam}
                             </div>
@@ -205,10 +208,12 @@ const Scoreboard = () => {
                         {/* Away Team */}
                         <div className="flex-1 text-center">
                             <div
+                                data-testid="away-score"
                                 className="text-extra-large font-black text-[hsl(var(--score-text))] mb-4 scoreboard-number leading-none">
                                 {awayScore}
                             </div>
                             <div
+                                data-testid="away-team"
                                 className="text-middle font-semibold text-[hsl(var(--team-text))] uppercase tracking-wide">
                                 {awayTeam}
                             </div>
@@ -219,6 +224,7 @@ const Scoreboard = () => {
                     <div className="text-center">
                         <div className="inline-flex items-center gap-2 bg-[hsl(var(--muted))] px-6 py-3 rounded-full">
                             <span
+                                data-testid="period"
                                 className="text-5xl font-semibold text-[hsl(var(--foreground))] uppercase tracking-wide">
                                 {period}
                             </span>

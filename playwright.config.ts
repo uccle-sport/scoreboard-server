@@ -13,7 +13,7 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   webServer: {
-    command: "PORT=5050 GDS_SECRET=test-secret node packages/server/dist/index.js",
+    command: "PORT=5050 GDS_SECRET=test-secret bun run packages/server/src/index.ts",
     port: 5050,
     reuseExistingServer: !process.env.CI,
   },

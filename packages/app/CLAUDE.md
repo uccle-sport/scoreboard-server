@@ -8,10 +8,10 @@ Scoreboard management single page app for live sports (basketball-style quarters
 
 ## Commands
 
-- `yarn dev` — Start dev server on port 8080
-- `yarn build` — Production build (output to packages/server/public/admin/)
-- `yarn build:dev` — Development build
-- `yarn lint` — ESLint
+- `bun run dev` — Start dev server on port 8080
+- `bun run build` — Production build (output to packages/server/public/admin/)
+- `bun run build:dev` — Development build
+- `bun run lint` — ESLint
 
 ## Tech Stack
 
@@ -19,7 +19,7 @@ Scoreboard management single page app for live sports (basketball-style quarters
 - shadcn/ui (default style, CSS variables, no RSC) + Tailwind CSS
 - Socket.IO client for real-time sync with scoreboard server
 - react-router-dom with `basename="/admin"`
-- Package manager: Yarn 4 (Corepack)
+- Package manager / runtime: Bun (workspaces)
 
 ## Architecture
 
@@ -39,6 +39,6 @@ All scoreboard state lives in `Index.tsx` and flows down as props. State changes
 
 ## Key Conventions
 
-- UI components in `src/components/ui/` are shadcn/ui primitives — add new ones via `npx shadcn-ui@latest add <component>`
+- UI components in `src/components/ui/` are shadcn/ui primitives — add new ones via `bunx shadcn-ui@latest add <component>`
 - Icons from `lucide-react`
 - Custom glow effects via `glow-primary`, `glow-accent`, `text-glow` CSS classes

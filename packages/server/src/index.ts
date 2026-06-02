@@ -1,3 +1,4 @@
+import "./env.js"; // must be first: loads .env before config reads process.env
 import http from "http";
 import { Server } from "socket.io";
 import { app, corsOptions } from "./server.js";
