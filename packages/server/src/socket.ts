@@ -30,9 +30,24 @@ async function flowrCommand(
   const command = process.env[envVarKey];
   if (!command) return { status: 404 };
 
+  // Fill the template placeholders before parsing: {channel} sits inside quoted
+  // JSON strings (the device route), while {volume} is an unquoted numeric slot
+  // ("volume":{volume}), so both must be substituted in the raw text — the result
+  // is only valid JSON once they are. A missing channel collapses to an empty
+  // segment; a missing volume becomes null (matching the power/scoreboard commands).
+  const filled = command
+    .replace(
+      /{channel}/g,
+      channel !== undefined ? encodeURIComponent(channel) : ""
+    )
+    .replace(
+      /{volume}/g,
+      volume !== undefined ? String(clampVolume(volume)) : "null"
+    );
+
   let parsedCommand: FlowrCommand;
   try {
-    parsedCommand = JSON.parse(command);
+    parsedCommand = JSON.parse(filled);
   } catch (e) {
     console.error("Invalid JSON for", envVarKey, e);
     return { status: 400 };
@@ -50,33 +65,16 @@ async function flowrCommand(
     headers.Authorization = `Bearer ${bearer}`;
   }
 
-  let body = parsedCommand.body
-
-  // Substitute the {channel} placeholder in the URL and body for tv/signage.
-  let url = parsedCommand.url;
-  if (channel !== undefined) {
-    const encoded = encodeURIComponent(channel);
-    url = url.replace(/{channel}/g, encoded);
-    if (body?.message?.route) {
-      body.message.route = body.message.route.replace(/{channel}/g, encoded);
-    }
-  }
-
-  // Apply the requested volume (0..100) to the device message.
-  if (volume !== undefined && body?.message) {
-    body.message.volume = clampVolume(volume);
-  }
-
   try {
-    const res = await fetch(url, {
+    const res = await fetch(parsedCommand.url, {
       method: parsedCommand.method || "GET",
       headers,
-      body: JSON.stringify(body),
+      body: parsedCommand.body ? JSON.stringify(parsedCommand.body) : undefined,
     });
     if (res.ok) {
       const text = await res.text();
       console.log(
-        `Flowr command to ${url} succeeded with response:`,
+        `Flowr command to ${parsedCommand.url} succeeded with response:`,
         text
       );
       return { status: 200 };
@@ -342,9 +340,22 @@ export function setupSocketHandlers(io: Server): void {
       const vol = clampVolume(volume);
       state[uuid] = { ...state[uuid], volume: vol };
       const sanitizedUuid = uuid.replace(/-/g, "_");
-      // Adjust the volume of the currently selected channel.
-      flowrCommand(`VOLUME_URL_${sanitizedUuid}`, state[uuid].channel, vol).then(
-        (r) => callback?.({ status: r.status })
+      // VOLUME_URL no longer exists: re-issue the current display's force-channel
+      // command (tv or signage) for the currently selected channel, now carrying
+      // the new volume. Scoreboard has no channel/audio route, so nothing is sent.
+      const { display, channel } = state[uuid];
+      const key =
+        display === "tv"
+          ? `TV_URL_${sanitizedUuid}`
+          : display === "signage"
+            ? `SIGNAGE_URL_${sanitizedUuid}`
+            : undefined;
+      if (!key) {
+        callback?.({ status: 200 });
+        return;
+      }
+      flowrCommand(key, channel, vol).then((r) =>
+        callback?.({ status: r.status })
       );
       console.log("states is", state[uuid]);
     });

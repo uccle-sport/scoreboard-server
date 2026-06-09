@@ -39,7 +39,7 @@ const SettingsScreen = ({
         <Card className="p-6 bg-card border-border">
           <div className="space-y-4">
             <div>
-              <Label className="text-lg font-bold text-primary">Power</Label>
+              <Label className="text-lg font-bold text-primary">Screen selection</Label>
             </div>
             <div className="flex gap-3">
               <Button
@@ -47,7 +47,7 @@ const SettingsScreen = ({
                 className={`flex-1 ${power === "on" ? "bg-primary text-primary-foreground" : "border-border"}`}
                 onClick={() => onPowerChange(true)}
               >
-                On
+                Score
               </Button>
               <Button
                 variant={power === "off" ? "default" : "outline"}
