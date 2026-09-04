@@ -22,6 +22,26 @@ function clampVolume(volume: number): number {
   return Math.max(0, Math.min(100, Math.round(volume)));
 }
 
+// Builds the headers for a Flowr request. The Flowr REST API rejects any body
+// whose Content-Type is not `application/json` with `HTTP 400 Content type '…'
+// not supported`, and fetch stamps `text/plain;charset=UTF-8` on a string body
+// when the header is absent. So the default is *merged under* the config's own
+// headers rather than replaced by them — a config that sets only `Accept` must
+// still send a Content-Type. The bearer is injected the same way, so a config may
+// override either without losing the other.
+export function buildFlowrHeaders(
+  configHeaders: Record<string, string> | undefined,
+  bearer: string | undefined
+): Record<string, string> {
+  const headers: Record<string, string> = { ...configHeaders };
+  const has = (name: string) =>
+    Object.keys(headers).some((h) => h.toLowerCase() === name);
+
+  if (!has("content-type")) headers["Content-Type"] = "application/json";
+  if (bearer && !has("authorization")) headers.Authorization = `Bearer ${bearer}`;
+  return headers;
+}
+
 async function flowrCommand(
   envVarKey: string,
   channel?: string,
@@ -54,16 +74,11 @@ async function flowrCommand(
   }
   if (!parsedCommand?.url) return { status: 400 };
 
-  const headers: Record<string, string> = {
-    ...(!parsedCommand.headers
-      ? { "Content-Type": "application/json" }
-      : parsedCommand.headers),
-  };
   // Inject the shared bearer (from .env), falling back to one embedded in the command.
-  const bearer = FLOWR_BEARER ?? parsedCommand.bearer;
-  if (bearer && !headers.Authorization && !headers.authorization) {
-    headers.Authorization = `Bearer ${bearer}`;
-  }
+  const headers = buildFlowrHeaders(
+    parsedCommand.headers,
+    FLOWR_BEARER ?? parsedCommand.bearer
+  );
 
   try {
     const res = await fetch(parsedCommand.url, {
@@ -152,14 +167,20 @@ async function loadChannels(envVarKey: string): Promise<Channel[]> {
     console.error("Invalid JSON for", envVarKey, e);
     return [];
   }
-  if (!config?.url) return [];
-
-  const headers: Record<string, string> = {
-    ...(config.headers ?? { "Content-Type": "application/json" }),
-  };
-  if (FLOWR_BEARER && !headers.Authorization && !headers.authorization) {
-    headers.Authorization = `Bearer ${FLOWR_BEARER}`;
+  // An absent env var is a legitimate "no channels here", but one that is set and
+  // unusable is a misconfiguration — most often the bare Flowr search body pasted
+  // in without the request wrapper around it. Say so rather than serving an empty
+  // picker with a clean log.
+  if (!config?.url) {
+    console.error(
+      `${envVarKey} has no "url" (found: ${Object.keys(config ?? {}).join(", ") || "nothing"}). ` +
+        `Expected {"url":"…","method":"POST","channelType":"tv","body":{…}} — ` +
+        `the search query goes under "body". No channels loaded.`
+    );
+    return [];
   }
+
+  const headers = buildFlowrHeaders(config.headers, FLOWR_BEARER);
 
   const body =
     config.body !== undefined

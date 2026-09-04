@@ -13,7 +13,8 @@
     "test:e2e": "bun run build && bunx playwright test",
     "patchAndTag": "bash scripts/bump-and-tag.sh patch",
     "minorAndTag": "bash scripts/bump-and-tag.sh minor",
-    "package": "bun run build && docker buildx build --platform linux/amd64,linux/arm64 --push -t europe-west1-docker.pkg.dev/uccle-sport/docker/scoreboard:$npm_package_version ."
+    "package": "bun run build && docker buildx build --platform linux/amd64,linux/arm64 --push -t europe-west1-docker.pkg.dev/uccle-sport/docker/scoreboard:$npm_package_version .",
+    "test": "bun run --filter @scoreboard/server test"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",

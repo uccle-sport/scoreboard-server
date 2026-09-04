@@ -247,6 +247,12 @@ direct Flowr URL would `403`.
 }
 ```
 
+The search query belongs under `body` — a config holding the bare query at the top
+level has no `url`, so no request is made and the picker is empty (the server logs
+which keys it found instead). Any `headers` you supply are merged *over* a default
+`Content-Type: application/json`; Flowr rejects every other content type with
+`400 Content type '…' not supported`, so only override it deliberately.
+
 ---
 
 ## Architecture Deep Dive
