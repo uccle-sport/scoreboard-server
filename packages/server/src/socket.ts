@@ -42,6 +42,29 @@ export function buildFlowrHeaders(
   return headers;
 }
 
+// How much of an upstream error body to keep. Enough for Flowr's one-line
+// messages and a truncated stack, short enough not to flood the log.
+const MAX_ERROR_BODY = 500;
+
+// Builds the Error message for a failed Flowr response. Flowr answers with a JSON
+// body naming the actual problem — "Searching on invisible fields is forbidden",
+// "Content type '…' not supported", "Missing discriminator $type in object" —
+// while the status alone says only that something was rejected. Carrying the body
+// into the error is the difference between a one-line diagnosis and guesswork, so
+// never throw the bare status. (`globalThis.Response` because the bare name is
+// Express's Response here, imported above for the logo handler.)
+export async function httpError(res: globalThis.Response): Promise<Error> {
+  let detail = "";
+  try {
+    detail = (await res.text()).trim().slice(0, MAX_ERROR_BODY);
+  } catch {
+    // The body was already consumed or the stream broke; the status still stands.
+  }
+  return new Error(
+    detail ? `HTTP ${res.status}: ${detail}` : `HTTP ${res.status}`
+  );
+}
+
 async function flowrCommand(
   envVarKey: string,
   channel?: string,
@@ -94,7 +117,7 @@ async function flowrCommand(
       );
       return { status: 200 };
     }
-    throw new Error(`HTTP ${res.status}`);
+    throw await httpError(res);
   } catch (err) {
     console.error(err);
     return { status: 400 };
@@ -194,7 +217,7 @@ async function loadChannels(envVarKey: string): Promise<Channel[]> {
     headers,
     body,
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  if (!res.ok) throw await httpError(res);
 
   const data = (await res.json()) as FlowrChannelSearchResponse;
   const results = Array.isArray(data.results) ? data.results : [];
