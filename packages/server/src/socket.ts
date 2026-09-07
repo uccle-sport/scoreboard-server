@@ -8,6 +8,15 @@ import {
 } from "./config.js";
 import { scoreBoards, state, forward, register } from "./state.js";
 import { envFor, sanitizeUuid } from "./env-keys.js";
+import {
+  accessStateFor,
+  can,
+  canAny,
+  claim,
+  extend,
+  release,
+  unlock,
+} from "./access.js";
 import type {
   Channel,
   ChannelSource,
@@ -300,6 +309,40 @@ function getChannels(envVarKey: string): Promise<Channel[]> {
   return promise.catch(() => []);
 }
 
+// The keys `update` is allowed to write. ScoreboardState carries an index
+// signature, so without this every client-supplied key lands in server state and
+// is spread straight back out by `sync` — which would let any phone inject or
+// read whatever it liked. This is the exact set the admin app sends.
+const UPDATABLE_KEYS = [
+  "home",
+  "away",
+  "remaining",
+  "paused",
+  "period",
+  "homeTeam",
+  "awayTeam",
+] as const;
+
+function pickUpdatable(msg: Record<string, unknown>): Record<string, unknown> {
+  const picked: Record<string, unknown> = {};
+  for (const key of UPDATABLE_KEYS) {
+    if (msg[key] !== undefined) picked[key] = msg[key];
+  }
+  return picked;
+}
+
+// Pushes each socket its *own* access state. The payload carries the control PIN
+// for holders only, so it can never be built once and broadcast — a single
+// shared payload would hand the PIN to every read-only phone in the room.
+export function broadcastAccess(uuid: string, now = Date.now()): void {
+  (scoreBoards[uuid] ?? []).forEach((s) => {
+    s.emit(
+      "access",
+      accessStateFor(uuid, s.data.deviceId as string | undefined, now)
+    );
+  });
+}
+
 export function setupSocketHandlers(io: Server): void {
   io.on("connection", (socket) => {
     const uuids: string[] = [];
@@ -308,29 +351,51 @@ export function setupSocketHandlers(io: Server): void {
 
     const uuid = socket.handshake.query.uuid as string;
     const token = socket.handshake.query.token as string;
+    // Identifies the phone, not the venue — `uuid` is the scoreboard. Grants are
+    // recorded against this so control survives a reload or a dropped
+    // connection; Socket.IO resends the handshake query on reconnect. Absent for
+    // the big-screen display app, which therefore can never hold a capability.
+    const deviceId = (socket.handshake.query.device as string) || undefined;
+    socket.data.deviceId = deviceId;
 
-    if (socket.handshake.query?.token) {
-      if (!register(token, uuid, socket, uuids)) {
-        socket.disconnect(true);
-        return;
-      }
+    // Previously a socket with an empty or absent token was neither registered
+    // nor disconnected: it stayed connected and could still drive the device
+    // webhooks, because those handlers only checked that `state[uuid]` existed.
+    if (!register(token, uuid, socket, uuids)) {
+      socket.disconnect(true);
+      return;
     }
+
+    // Denials carry the current access state so the client can raise its banner
+    // straight from the ack instead of waiting for a refresh.
+    const deny = (status: number) => ({
+      status,
+      access: accessStateFor(uuid, deviceId),
+    });
 
     socket.on("update", ({ rev, ...msg }: UpdateMessage, callback) => {
       if (!state[uuid]) {
         callback?.({ status: 403 });
         return;
       }
+      // Authorise before touching state. The old order mutated and bumped `rev`
+      // first, so a rejected write still invalidated everyone else's rev and
+      //409-stormed the legitimate scorer on their next keystroke.
+      if (!can(uuid, deviceId, "edit")) {
+        callback?.(deny(403));
+        return;
+      }
+      const fields = pickUpdatable(msg as Record<string, unknown>);
       if (!state[uuid].rev || rev === state[uuid].rev) {
         state[uuid] = {
           ...state[uuid],
-          ...msg,
-          ...(msg.remaining
+          ...fields,
+          ...(fields.remaining
             ? {
-                endDate: Date.now() + msg.remaining * 1000,
-                remaining: msg.remaining,
+                endDate: Date.now() + (fields.remaining as number) * 1000,
+                remaining: fields.remaining as number,
               }
-            : msg.paused && !state[uuid].paused && state[uuid].endDate
+            : fields.paused && !state[uuid].paused && state[uuid].endDate
               ? {
                   remaining: Math.floor(
                     (state[uuid].endDate! - Date.now()) / 1000
@@ -340,14 +405,24 @@ export function setupSocketHandlers(io: Server): void {
           rev: uuidv4(),
         };
         console.log("states is", state[uuid]);
-        forward("update", uuid, token, callback, msg as Record<string, unknown>);
+        forward("update", uuid, callback, fields);
       } else {
         callback?.({ status: 409 });
       }
     });
 
     socket.on("power", ({ on }: PowerMessage, callback) => {
-      if (!state[uuid]) return;
+      // Blanking the screen is the most disruptive action available and lives on
+      // the settings screen, so it takes the score-edit capability. Previously
+      // this handler had no authorisation of any kind.
+      if (!state[uuid]) {
+        callback?.({ status: 403 });
+        return;
+      }
+      if (!can(uuid, deviceId, "edit")) {
+        callback?.(deny(403));
+        return;
+      }
       state[uuid] = { ...state[uuid], power: on ? "on" : "off" };
       flowrCommand(
         `${on ? "POWER_ON_URL" : "POWER_OFF_URL"}_${sanitizeUuid(uuid)}`
@@ -358,7 +433,21 @@ export function setupSocketHandlers(io: Server): void {
     socket.on(
       "display",
       ({ display, channel, volume }: DisplayMessage, callback) => {
-        if (!state[uuid]) return;
+        if (!state[uuid]) {
+          callback?.({ status: 403 });
+          return;
+        }
+        // Switching *to* a source needs that source's PIN. Going back to the
+        // scoreboard accepts any grant, so an operator who unlocked only TV is
+        // not stranded on TV with no way home.
+        const allowed =
+          display === "scoreboard"
+            ? canAny(uuid, deviceId)
+            : can(uuid, deviceId, display === "tv" ? "tv" : "signage");
+        if (!allowed) {
+          callback?.(deny(403));
+          return;
+        }
         const vol = volume !== undefined ? clampVolume(volume) : undefined;
         state[uuid] = {
           ...state[uuid],
@@ -380,7 +469,19 @@ export function setupSocketHandlers(io: Server): void {
     );
 
     socket.on("volume", ({ volume }: VolumeMessage, callback) => {
-      if (!state[uuid]) return;
+      if (!state[uuid]) {
+        callback?.({ status: 403 });
+        return;
+      }
+      // Volume belongs to whatever is currently on screen, so it takes that
+      // source's capability.
+      const current = state[uuid].display;
+      const needed =
+        current === "tv" ? "tv" : current === "signage" ? "signage" : undefined;
+      if (needed ? !can(uuid, deviceId, needed) : !canAny(uuid, deviceId)) {
+        callback?.(deny(403));
+        return;
+      }
       const vol = clampVolume(volume);
       state[uuid] = { ...state[uuid], volume: vol };
       const sanitized = sanitizeUuid(uuid);
@@ -407,6 +508,9 @@ export function setupSocketHandlers(io: Server): void {
     socket.on("ping", () => {});
 
     socket.on("sync", async (_data: Record<string, never>, callback) => {
+      // Reading is authorised by the shared secret alone: the big-screen display
+      // polls this every 60s and holds no PIN, and a read-only phone must be
+      // able to see the score before it asks for control.
       if (validateToken(token) && state[uuid]) {
         const sanitized = sanitizeUuid(uuid);
         const [tv, signage] = await Promise.all([
@@ -425,9 +529,46 @@ export function setupSocketHandlers(io: Server): void {
                   : undefined,
             endDate: undefined,
             channels: { tv, signage },
+            access: accessStateFor(uuid, deviceId),
           },
         });
+      } else {
+        // Previously there was no else: a bad token got no ack at all and the
+        // client waited forever, indistinguishable from a slow network.
+        callback?.({ status: 401 });
       }
+    });
+
+    // --- Access control -----------------------------------------------------
+    // `access` is a pure query; the rest are transitions, and each broadcasts
+    // afterwards so every phone's banner and read-only state stays in step.
+
+    socket.on("access", (_data: Record<string, never>, callback) => {
+      callback?.({ status: 200, access: accessStateFor(uuid, deviceId) });
+    });
+
+    socket.on("claim", (_data: Record<string, never>, callback) => {
+      const result = claim(uuid, deviceId);
+      if (result.status === 200) broadcastAccess(uuid);
+      callback?.({ ...result, access: accessStateFor(uuid, deviceId) });
+    });
+
+    socket.on("unlock", ({ pin }: { pin?: unknown }, callback) => {
+      const result = unlock(uuid, deviceId, pin);
+      if (result.status === 200) broadcastAccess(uuid);
+      callback?.({ ...result, access: accessStateFor(uuid, deviceId) });
+    });
+
+    socket.on("extend", (_data: Record<string, never>, callback) => {
+      const result = extend(uuid, deviceId);
+      if (result.status === 200) broadcastAccess(uuid);
+      callback?.({ ...result, access: accessStateFor(uuid, deviceId) });
+    });
+
+    socket.on("release", (_data: Record<string, never>, callback) => {
+      const result = release(uuid, deviceId);
+      if (result.status === 200) broadcastAccess(uuid);
+      callback?.({ ...result, access: accessStateFor(uuid, deviceId) });
     });
 
     socket.on("disconnect", () => {

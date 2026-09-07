@@ -24,6 +24,10 @@ app.get("/", (_req, res) =>
   res.sendFile(path.join(__dirname, "../public/index.html"))
 );
 
+// Harmless target for the device-webhook config in the e2e suite, so
+// flowrCommand has something to POST to that isn't a real Flowr instance.
+app.all("/debug/noop", (_req, res) => res.json({ ok: true }));
+
 // Debug endpoint for E2E tests
 app.get("/debug/sockets/:uuid", (_req, res) => {
   const uuid = _req.params.uuid;

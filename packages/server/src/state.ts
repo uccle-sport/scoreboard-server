@@ -9,32 +9,33 @@ import { validateToken } from "./config.js";
 export const scoreBoards: ScoreboardSockets = {};
 export const state: StateMap = {};
 
+// Broadcasts a state delta to every client registered for this scoreboard.
+//
+// No longer checks the token: authorisation is now a per-capability decision the
+// calling handler makes *before* it mutates state (see access.ts). Leaving the
+// check here would also reject a phone that holds a valid PIN grant but whose
+// socket is only observing.
 export function forward(
   action: string,
   uuid: string,
-  token: string,
   callback: (result: ForwardResult) => void,
   msg?: Record<string, unknown>
 ): void {
-  if (validateToken(token)) {
-    console.log(
-      `Forwarding: ${uuid}, ${action}${msg ? " < " + JSON.stringify(msg) : ""}`
-    );
-    if (scoreBoards[uuid] && scoreBoards[uuid].length) {
-      scoreBoards[uuid].forEach((s) => {
-        s.emit(
-          action,
-          { ts: Date.now(), rev: state[uuid].rev, ...(msg || {}) },
-          (response: unknown) => {
-            callback({ status: 200, rev: state[uuid].rev, response });
-          }
-        );
-      });
-    } else {
-      callback({ status: 404 });
-    }
+  console.log(
+    `Forwarding: ${uuid}, ${action}${msg ? " < " + JSON.stringify(msg) : ""}`
+  );
+  if (scoreBoards[uuid] && scoreBoards[uuid].length) {
+    scoreBoards[uuid].forEach((s) => {
+      s.emit(
+        action,
+        { ts: Date.now(), rev: state[uuid].rev, ...(msg || {}) },
+        (response: unknown) => {
+          callback({ status: 200, rev: state[uuid].rev, response });
+        }
+      );
+    });
   } else {
-    callback({ status: 401 });
+    callback({ status: 404 });
   }
 }
 
