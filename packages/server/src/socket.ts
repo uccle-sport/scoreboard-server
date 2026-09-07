@@ -7,6 +7,7 @@ import {
   FLOWR_LOGO_URL_TEMPLATE,
 } from "./config.js";
 import { scoreBoards, state, forward, register } from "./state.js";
+import { envFor, sanitizeUuid } from "./env-keys.js";
 import type {
   Channel,
   ChannelSource,
@@ -348,9 +349,8 @@ export function setupSocketHandlers(io: Server): void {
     socket.on("power", ({ on }: PowerMessage, callback) => {
       if (!state[uuid]) return;
       state[uuid] = { ...state[uuid], power: on ? "on" : "off" };
-      const sanitizedUuid = uuid.replace(/-/g, "_");
       flowrCommand(
-        `${on ? "POWER_ON_URL" : "POWER_OFF_URL"}_${sanitizedUuid}`
+        `${on ? "POWER_ON_URL" : "POWER_OFF_URL"}_${sanitizeUuid(uuid)}`
       ).then((r) => callback?.({ status: r.status }));
       console.log("states is", state[uuid]);
     });
@@ -366,13 +366,13 @@ export function setupSocketHandlers(io: Server): void {
           channel,
           ...(vol !== undefined ? { volume: vol } : {}),
         };
-        const sanitizedUuid = uuid.replace(/-/g, "_");
+        const sanitized = sanitizeUuid(uuid);
         const key =
           display === "scoreboard"
-            ? `SCOREBOARD_URL_${sanitizedUuid}`
+            ? `SCOREBOARD_URL_${sanitized}`
             : display === "tv"
-              ? `TV_URL_${sanitizedUuid}`
-              : `SIGNAGE_URL_${sanitizedUuid}`;
+              ? `TV_URL_${sanitized}`
+              : `SIGNAGE_URL_${sanitized}`;
         const ch = display === "scoreboard" ? undefined : channel;
         flowrCommand(key, ch, vol).then((r) => callback?.({ status: r.status }));
         console.log("states is", state[uuid]);
@@ -383,16 +383,16 @@ export function setupSocketHandlers(io: Server): void {
       if (!state[uuid]) return;
       const vol = clampVolume(volume);
       state[uuid] = { ...state[uuid], volume: vol };
-      const sanitizedUuid = uuid.replace(/-/g, "_");
+      const sanitized = sanitizeUuid(uuid);
       // VOLUME_URL no longer exists: re-issue the current display's force-channel
       // command (tv or signage) for the currently selected channel, now carrying
       // the new volume. Scoreboard has no channel/audio route, so nothing is sent.
       const { display, channel } = state[uuid];
       const key =
         display === "tv"
-          ? `TV_URL_${sanitizedUuid}`
+          ? `TV_URL_${sanitized}`
           : display === "signage"
-            ? `SIGNAGE_URL_${sanitizedUuid}`
+            ? `SIGNAGE_URL_${sanitized}`
             : undefined;
       if (!key) {
         callback?.({ status: 200 });
@@ -408,10 +408,10 @@ export function setupSocketHandlers(io: Server): void {
 
     socket.on("sync", async (_data: Record<string, never>, callback) => {
       if (validateToken(token) && state[uuid]) {
-        const sanitizedUuid = uuid.replace(/-/g, "_");
+        const sanitized = sanitizeUuid(uuid);
         const [tv, signage] = await Promise.all([
-          getChannels(`TV_CHANNELS_${sanitizedUuid}`),
-          getChannels(`SIGNAGE_CHANNELS_${sanitizedUuid}`),
+          getChannels(`TV_CHANNELS_${sanitized}`),
+          getChannels(`SIGNAGE_CHANNELS_${sanitized}`),
         ]);
         callback?.({
           status: 200,
