@@ -64,8 +64,10 @@ const Scoreboard = () => {
 
         if (payload.remaining !== undefined) {
             const rem = Math.floor(payload.remaining);
-            setRemaining(Math.max(rem, 0))
-            remainingRef.current = Math.max(rem, 0);
+            // The display freezes its own countdown at 1:00 — the app keeps
+            // running underneath, this clamp only affects what's shown here.
+            setRemaining(Math.max(rem, 60))
+            remainingRef.current = Math.max(rem, 60);
             const newEnd = new Date(+new Date() + rem * 1000)
             setEndDate(newEnd)
             endDateRef.current = newEnd;
@@ -77,7 +79,7 @@ const Scoreboard = () => {
         if (pausedRef.current) {
             setEndDate(new Date(+new Date() + remainingRef.current * 1000))
         } else {
-            setRemaining(Math.max(Math.floor(((+endDateRef.current) - (+new Date())) / 1000), 0))
+            setRemaining(Math.max(Math.floor(((+endDateRef.current) - (+new Date())) / 1000), 60))
         }
     }, 1000);
 

@@ -80,10 +80,18 @@ export default {
             height: "0",
           },
         },
+        // input-otp's slot renders a fake caret with `animate-caret-blink`.
+        // shadcn normally adds this keyframe alongside the component; that step
+        // was missed, so the caret sat static until PIN entry made it visible.
+        "caret-blink": {
+          "0%,70%,100%": { opacity: "1" },
+          "20%,50%": { opacity: "0" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "caret-blink": "caret-blink 1.25s ease-out infinite",
       },
     },
   },

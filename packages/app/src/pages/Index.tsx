@@ -4,6 +4,8 @@ import SettingsScreen from "@/components/SettingsScreen";
 import DisplaySourceScreen from "@/components/DisplaySourceScreen";
 import BottomNav, { type NavTab } from "@/components/BottomNav";
 import useSocket from "@/hooks/use-socket.tsx";
+import useAccess from "@/hooks/use-access";
+import AccessBanner, { type AccessNeed } from "@/components/AccessBanner";
 import { useInterval } from "react-use";
 
 type DisplaySource = "scoreboard" | "tv" | "signage";
@@ -55,8 +57,13 @@ const Index = () => {
 
     // Track when a change originates locally (from UI) so we can emit to the server
     const localChangeRef = useRef(false);
+    // `update` is memoised with no deps; the ref keeps its denial handling
+    // current without re-creating the callback on every access change.
+    const onDeniedRef = useRef<(resp: unknown) => boolean>(() => false);
 
     const socket = useSocket();
+    const {access, claim, unlock, extend, release, onDenied} = useAccess(socket);
+    onDeniedRef.current = onDenied as (resp: unknown) => boolean;
 
     const update = useCallback((ioSocket: typeof socket, homeTeam: string, awayTeam: string, homeScore: number, awayScore: number, remaining: number, paused: boolean, period: string, latestRev: string) => {
         const payload: Message = {
@@ -72,6 +79,7 @@ const Index = () => {
 
         ioSocket.emit('update', payload,
             (resp) => {
+                if (onDeniedRef.current(resp)) return;
                 if (resp && resp.status === 409) {
                     // refresh state
                     ioSocket.emit(
@@ -176,18 +184,29 @@ const Index = () => {
         localChangeRef.current = true;
         setAwayTeam(val);
     };
+    // These three apply optimistically, so a server refusal has to put the local
+    // value back — otherwise the UI claims a change the device never made.
     const handlePowerChange = (on: boolean) => {
+        const previous = power;
         setPower(on ? "on" : "off");
-        socket.emit('power', {on});
+        socket.emit('power', {on}, (resp) => {
+            if (onDenied(resp)) setPower(previous);
+        });
     };
     const handleDisplayChange = (display: DisplaySource, ch?: string) => {
+        const previous = channel;
         setChannel(ch);
         // Carry the current volume so the selected channel starts at the set level.
-        socket.emit('display', {display, channel: ch, volume});
+        socket.emit('display', {display, channel: ch, volume}, (resp) => {
+            if (onDenied(resp)) setChannel(previous);
+        });
     };
     const handleVolumeChange = (val: number) => {
+        const previous = volume;
         setVolume(val);
-        socket.emit('volume', {volume: val});
+        socket.emit('volume', {volume: val}, (resp) => {
+            if (onDenied(resp)) setVolume(previous);
+        });
     };
     // Pick the channel to use when switching to a source: keep the current one if
     // it belongs to that source, otherwise fall back to the first available.
@@ -196,12 +215,18 @@ const Index = () => {
         if (channel && list.some((c) => c.id === channel)) return channel;
         return list[0]?.id;
     };
-    // The bottom tab doubles as the display-source selector for scoreboard/tv/signage.
+    // The bottom tab doubles as the display-source selector. Navigation always
+    // happens — a locked phone must still be able to look at the channel list —
+    // but the source only actually switches when this phone may switch it.
     const handleTabChange = (tab: NavTab) => {
         setActiveTab(tab);
-        if (tab === "scoreboard") handleDisplayChange("scoreboard");
-        else if (tab === "tv") handleDisplayChange("tv", pickChannel("tv"));
-        else if (tab === "signage") handleDisplayChange("signage", pickChannel("signage"));
+        if (tab === "scoreboard") {
+            if (access.canEdit || access.canTv || access.canSignage) handleDisplayChange("scoreboard");
+        } else if (tab === "tv") {
+            if (access.canTv) handleDisplayChange("tv", pickChannel("tv"));
+        } else if (tab === "signage") {
+            if (access.canSignage) handleDisplayChange("signage", pickChannel("signage"));
+        }
     };
     const handlePausedChange = (val: boolean) => {
         localChangeRef.current = true;
@@ -210,9 +235,18 @@ const Index = () => {
 
     useEffect(() => {
         if (!localChangeRef.current) return;
-        update(socket, homeTeam, awayTeam, homeScore, awayScore, remaining, paused, period, latestRev);
         localChangeRef.current = false;
-    }, [socket, homeTeam, awayTeam, homeScore, awayScore, remaining, paused, period, latestRev, update]);
+        if (!access.canEdit) return;
+        update(socket, homeTeam, awayTeam, homeScore, awayScore, remaining, paused, period, latestRev);
+    }, [socket, homeTeam, awayTeam, homeScore, awayScore, remaining, paused, period, latestRev, update, access.canEdit]);
+
+    // Which capability the visible tab needs, and therefore what the banner asks
+    // for. Settings edits team names, so it needs the same right as the score.
+    const need: AccessNeed =
+        activeTab === "tv" ? "tv" : activeTab === "signage" ? "signage" : "edit";
+    const granted =
+        need === "tv" ? access.canTv : need === "signage" ? access.canSignage : access.canEdit;
+    const bannerVisible = !granted;
 
     return (
         <div className="min-h-screen bg-background">
@@ -230,6 +264,8 @@ const Index = () => {
                     onTimeChange={handleTimeChange}
                     onPeriodChange={handlePeriodChange}
                     onPausedChange={handlePausedChange}
+                    canEdit={access.canEdit}
+                    bannerVisible={bannerVisible}
                 />
             )}
             {(activeTab === "tv" || activeTab === "signage") && (
@@ -240,6 +276,8 @@ const Index = () => {
                     volume={volume}
                     onChannelChange={(id) => handleDisplayChange(activeTab, id)}
                     onVolumeChange={handleVolumeChange}
+                    canSelect={activeTab === "tv" ? access.canTv : access.canSignage}
+                    bannerVisible={bannerVisible}
                 />
             )}
             {activeTab === "settings" && (
@@ -250,6 +288,19 @@ const Index = () => {
                     onAwayTeamChange={handleAwayTeamChange}
                     power={power}
                     onPowerChange={handlePowerChange}
+                    canEdit={access.canEdit}
+                    bannerVisible={bannerVisible}
+                    access={access}
+                    onExtend={extend}
+                    onRelease={release}
+                />
+            )}
+            {bannerVisible && (
+                <AccessBanner
+                    access={access}
+                    need={need}
+                    onClaim={claim}
+                    onUnlock={unlock}
                 />
             )}
             <BottomNav activeTab={activeTab} onTabChange={handleTabChange}/>

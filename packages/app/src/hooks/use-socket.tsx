@@ -1,5 +1,6 @@
 import {useEffect, useMemo} from 'react';
 import {io, Socket} from 'socket.io-client';
+import {deviceId} from '@/lib/device';
 
 // Default socket URL can be overridden with VITE_SOCKET_URL in your .env
 const params = new URLSearchParams(window.location.href.split("?")[1])
@@ -19,7 +20,11 @@ function getSocket() {
             transports: ['websocket'],
             query: {
                 token: params?.get('secret') ?? "",
-                uuid: params?.get('uuid') ?? ""
+                uuid: params?.get('uuid') ?? "",
+                // Identifies this phone so the server can remember its PIN
+                // grants. Sent in the handshake because Socket.IO replays it on
+                // every reconnect, so a dropped connection keeps its control.
+                device: deviceId()
             }
         };
         socket = !socketIoUrl ? io(options) : io(socketIoUrl, options);

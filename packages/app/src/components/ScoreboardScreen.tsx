@@ -3,6 +3,7 @@ import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {Card} from "@/components/ui/card";
 import {Plus, Minus} from "lucide-react";
+import {cn} from "@/lib/utils";
 
 interface ScoreboardScreenProps {
     homeTeam: string,
@@ -16,7 +17,9 @@ interface ScoreboardScreenProps {
     onTimeChange: (time: number) => void,
     onPeriodChange: (period: string) => void,
     onPausedChange: (paused: boolean) => void,
-    paused: boolean
+    paused: boolean,
+    canEdit: boolean,
+    bannerVisible: boolean
 }
 
 const ScoreboardScreen = ({
@@ -31,7 +34,9 @@ const ScoreboardScreen = ({
                               onPausedChange,
                               onTimeChange,
                               onPeriodChange,
-                              paused
+                              paused,
+                              canEdit,
+                              bannerVisible
                           }: ScoreboardScreenProps) => {
     const [customTime, setCustomTime] = useState("");
 
@@ -58,7 +63,7 @@ const ScoreboardScreen = ({
     };
 
     return (
-        <div className="min-h-screen p-4 pb-24">
+        <div className={cn("min-h-screen p-4", bannerVisible ? "pb-44" : "pb-24")}>
             <div className="max-w-2xl mx-auto space-y-6">
                 {/* Main Scoreboard */}
                 <Card className="p-6 bg-card border-primary glow-primary">
@@ -71,6 +76,7 @@ const ScoreboardScreen = ({
                             <div data-testid="home-score" className="text-6xl font-black text-glow">{homeScore}</div>
                             <div className="flex gap-2 justify-center">
                                 <Button
+                                    disabled={!canEdit}
                                     data-testid="home-minus"
                                     size="sm"
                                     variant="outline"
@@ -80,6 +86,7 @@ const ScoreboardScreen = ({
                                     <Minus className="h-5 w-5"/>
                                 </Button>
                                 <Button
+                                    disabled={!canEdit}
                                     data-testid="home-plus"
                                     size="sm"
                                     className="bg-primary text-primary-foreground hover:bg-primary/90 glow-primary w-[30%]"
@@ -99,6 +106,7 @@ const ScoreboardScreen = ({
                                 {secondsToTime(time)}
                             </div>
                             <Button
+                                disabled={!canEdit}
                                 data-testid="timer-toggle"
                                 size="lg"
                                 variant={!paused ? "destructive" : "default"}
@@ -117,6 +125,7 @@ const ScoreboardScreen = ({
                             <div data-testid="away-score" className="text-6xl font-black text-glow">{awayScore}</div>
                             <div className="flex gap-2 justify-center">
                                 <Button
+                                    disabled={!canEdit}
                                     data-testid="away-minus"
                                     size="sm"
                                     variant="outline"
@@ -126,6 +135,7 @@ const ScoreboardScreen = ({
                                     <Minus className="h-5 w-5"/>
                                 </Button>
                                 <Button
+                                    disabled={!canEdit}
                                     data-testid="away-plus"
                                     size="sm"
                                     className="bg-primary text-primary-foreground hover:bg-primary/90 glow-primary w-[30%]"
@@ -144,6 +154,7 @@ const ScoreboardScreen = ({
                     <div className="grid grid-cols-3 gap-3">
                         {presetTimes.map((preset) => (
                             <Button
+                                disabled={!canEdit}
                                 key={preset}
                                 variant="secondary"
                                 onClick={() => {
@@ -158,13 +169,14 @@ const ScoreboardScreen = ({
                     </div>
                     <div className="flex gap-2">
                         <Input
+                            disabled={!canEdit}
                             type="text"
                             placeholder="MM:SS"
                             value={customTime}
                             onChange={(e) => setCustomTime(e.target.value)}
                             className="bg-input border-border"
                         />
-                        <Button onClick={handleCustomTime}
+                        <Button disabled={!canEdit} onClick={handleCustomTime}
                                 className="bg-primary text-primary-foreground hover:bg-primary/90">
                             Set
                         </Button>
@@ -177,6 +189,7 @@ const ScoreboardScreen = ({
                     <div className="grid grid-cols-2 gap-3">
                         {quarterPeriods.map((p) => (
                             <Button
+                                disabled={!canEdit}
                                 key={p}
                                 variant={period === p ? "default" : "secondary"}
                                 onClick={() => onPeriodChange(p)}
@@ -194,6 +207,7 @@ const ScoreboardScreen = ({
                     <div className="grid grid-cols-2 gap-3">
                         {halfPeriods.map((p) => (
                             <Button
+                                disabled={!canEdit}
                                 key={p}
                                 variant={period === p ? "default" : "secondary"}
                                 onClick={() => onPeriodChange(p)}

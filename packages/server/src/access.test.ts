@@ -371,3 +371,38 @@ describe("an unconfigured, unclaimed scoreboard", () => {
     expect(s.nextChange).toBeUndefined();
   });
 });
+
+describe("per-display control window", () => {
+  it("overrides the default TTL for that scoreboard only", () => {
+    const key = `CONTROL_TTL_MS_${ENV_UUID}`;
+    process.env[key] = "4000";
+    try {
+      claim(UUID, PHONE_A, WED_1200);
+      expect(accessStateFor(UUID, PHONE_A, WED_1200).expiresAt).toBe(WED_1200 + 4000);
+      expect(can(UUID, PHONE_A, "edit", WED_1200 + 3999)).toBe(true);
+      expect(can(UUID, PHONE_A, "edit", WED_1200 + 4000)).toBe(false);
+
+      // A different scoreboard keeps the default window.
+      const other = "bbbbbbbb-0000-4000-8000-000000000002";
+      claim(other, PHONE_A, WED_1200);
+      expect(accessStateFor(other, PHONE_A, WED_1200).expiresAt).toBe(
+        WED_1200 + CONTROL_TTL_MS
+      );
+    } finally {
+      delete process.env[key];
+    }
+  });
+
+  it("ignores a non-numeric or non-positive override", () => {
+    const key = `CONTROL_TTL_MS_${ENV_UUID}`;
+    for (const bad of ["nonsense", "0", "-5"]) {
+      process.env[key] = bad;
+      resetAccess();
+      claim(UUID, PHONE_A, WED_1200);
+      expect(accessStateFor(UUID, PHONE_A, WED_1200).expiresAt).toBe(
+        WED_1200 + CONTROL_TTL_MS
+      );
+    }
+    delete process.env[key];
+  });
+});

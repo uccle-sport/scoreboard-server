@@ -115,6 +115,15 @@ export function mintPin(uuid: string): string {
   }
 }
 
+// How long a claim lasts on this scoreboard. Overridable per display, following
+// the same `<PREFIX>_<UUID>` convention as the device webhooks, so the e2e suite
+// can watch one board's control lapse in seconds without shortening the window
+// for every other test running against the same server.
+function ttlFor(uuid: string): number {
+  const override = Number(envFor("CONTROL_TTL_MS", uuid));
+  return Number.isFinite(override) && override > 0 ? override : CONTROL_TTL_MS;
+}
+
 function emptyRecord(): AccessRecord {
   return {
     editGrants: new Map(),
@@ -274,7 +283,7 @@ export function claim(
   rec.ownership = {
     pin: mintPin(uuid),
     claimedAt: now,
-    expiresAt: now + CONTROL_TTL_MS,
+    expiresAt: now + ttlFor(uuid),
     devices: new Set([device]),
   };
   return { status: 200 };
@@ -322,7 +331,7 @@ export function unlock(
     rec.ownership = undefined;
     rec.editGrants.set(
       device,
-      slot ? slotEnd(slot, now) : now + CONTROL_TTL_MS
+      slot ? slotEnd(slot, now) : now + ttlFor(uuid)
     );
     rec.failures = { count: 0, until: 0 };
     return { status: 200 };
@@ -363,7 +372,7 @@ export function extend(
 ): AccessResult {
   const rec = sweep(uuid, now);
   if (!device || !rec.ownership || !isOwner(rec, device)) return { status: 403 };
-  rec.ownership.expiresAt = now + CONTROL_TTL_MS;
+  rec.ownership.expiresAt = now + ttlFor(uuid);
   return { status: 200 };
 }
 
