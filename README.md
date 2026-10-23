@@ -154,8 +154,9 @@ bun run start
 ## Docker
 
 The repo-root `Dockerfile` builds a self-contained server image. It is a multi-stage
-build that compiles both frontends into `packages/server/public`, then runs the
-server with Bun on an `alpine-glibc` base with the Bun binary copied in.
+build that compiles both frontends into `packages/server/public` and the server into a
+single `bun build --compile` executable, then ships both in a `FROM scratch` image
+(no shell; the frontends live in `/app/public`, located via `PUBLIC_DIR`).
 
 ```bash
 # Build from the repository root (the context must include all workspaces)

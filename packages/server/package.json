@@ -8,12 +8,12 @@
     "dev": "bun --watch src/index.ts",
     "build": "tsc --noEmit",
     "start": "bun run src/index.ts",
-    "test": "bun test"
+    "test": "bun test",
+    "lint": "oxlint"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^4.17.1",
-    "node-fetch": "2.7.0",
     "socket.io": "^4.8.0",
     "uuid": "^8.3.2"
   },
@@ -21,8 +21,8 @@
     "@types/bun": "^1.4.1",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
-    "@types/node": "^22.16.5",
     "@types/uuid": "^10.0.0",
-    "typescript": "^5.8.3"
+    "oxlint": "^1.89.0",
+    "typescript": "^7.0.2"
   }
 }

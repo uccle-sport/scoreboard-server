@@ -1,10 +1,12 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    // Bun runs the TypeScript sources directly (and `bun build --compile` bundles
+    // them for the Docker image), so `build` is a type-check only (`tsc --noEmit`).
+    "module": "Preserve",
+    "moduleResolution": "bundler",
+    "types": ["bun"],
     "rootDir": "src",
-    // Bun runs the TypeScript sources directly, so `build` is a type-check only
-    // (`tsc --noEmit`). No declarations are emitted, which also avoids the
-    // non-portable "type cannot be named" errors from Bun's isolated module layout.
     "noEmit": true,
     "declaration": false,
     "declarationMap": false

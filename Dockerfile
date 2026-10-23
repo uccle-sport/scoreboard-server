@@ -2,20 +2,17 @@
 #
 # Server image. The Express server serves its own API/WebSocket endpoints plus the
 # pre-built display app (at "/") and admin app (at "/admin/"), so the build stage
-# compiles both frontends into packages/server/public before the runtime stage runs
-# the TypeScript server directly with Bun.
+# compiles both frontends into packages/server/public and the server into a single
+# standalone executable; the runtime stage is `scratch` with just those.
 #
 # Build from the repository root (the build context must include all workspaces):
 #   docker build -t scoreboard-server .
 
-# Pin the Bun version in one place; override with --build-arg BUN_VERSION=1.3.10
-ARG BUN_VERSION=1.3.10
+# Pin the Bun version in one place; override with --build-arg BUN_VERSION=…
+ARG BUN_VERSION=1.4.4
 
-# Stage that provides the Bun binary — reused by the build stage and copied into runtime.
-FROM oven/bun:${BUN_VERSION} AS bun
-
-# --- Build stage: install workspace deps and build the frontends ---
-FROM bun AS build
+# --- build: install workspace deps, build the frontends, compile the server ---
+FROM oven/bun:${BUN_VERSION}-alpine AS build
 WORKDIR /app
 
 # Copy manifests + lockfile first so dependency installs are cached across source changes.
@@ -31,31 +28,34 @@ COPY . .
 RUN bun run --filter @scoreboard/display build \
  && bun run --filter @scoreboard/app build
 
-# --- Runtime stage: Alpine + glibc with just the Bun binary copied in ---
-FROM frolvlad/alpine-glibc
-COPY --from=bun /usr/local/bin/bun /usr/local/bin/
+# Bundle the server and its deps into one executable. Inside it import.meta.url
+# points at the embedded /$bunfs filesystem, so the static files are located via
+# PUBLIC_DIR (set below) rather than relative to the sources.
+RUN bun build ./packages/server/src/index.ts \
+    --compile \
+    --minify \
+    --sourcemap \
+    --no-compile-autoload-dotenv \
+    --outfile /app/server
 
+# --- runtime: nothing but the binary, its musl/libstdc++ shared libs, CA roots and public/ ---
+FROM scratch
 WORKDIR /app
 
-# Install production dependencies only (skips Vite/TS/ESLint and the rest of the
-# build tooling). Uses the same lockfile resolved in the build stage.
-COPY package.json bun.lock ./
-COPY packages/server/package.json ./packages/server/
-COPY packages/app/package.json ./packages/app/
-COPY packages/display/package.json ./packages/display/
-RUN bun install --production --frozen-lockfile
+# the compiled binary dynamically links these (bun-alpine builds are not fully static)
+COPY --from=build /lib/ld-musl-*.so.1 /lib/
+COPY --from=build "/usr/lib/libstdc++.so.6" /usr/lib/
+COPY --from=build /usr/lib/libgcc_s.so.1 /usr/lib/
 
-# Server sources and the frontends built in the build stage.
-COPY tsconfig.base.json ./
-COPY packages/server/tsconfig.json ./packages/server/
-COPY packages/server/src ./packages/server/src
-COPY --from=build /app/packages/server/public ./packages/server/public
-
-WORKDIR /app/packages/server
+# CA roots for the outbound HTTPS calls to Flowr (channels, logos, device webhooks)
+COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY --from=build /app/server /app/server
+COPY --from=build /app/packages/server/public /app/public
 
 ENV NODE_ENV=production
 ENV PORT=5000
-EXPOSE 5000
+ENV PUBLIC_DIR=/app/public
 
-# Bun runs the TypeScript entry point directly — no compile step.
-CMD ["bun", "run", "src/index.ts"]
+USER 65532:65532
+EXPOSE 5000
+ENTRYPOINT ["/app/server"]
