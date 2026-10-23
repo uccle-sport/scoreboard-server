@@ -20,6 +20,7 @@ Scoreboard monorepo: a real-time sports scoreboard system with an Express+Socket
 - `bun run --filter @scoreboard/app dev` — Admin app only (port 8080)
 - `bun run --filter @scoreboard/display dev` — Display app only (port 8081)
 - `bun run test:e2e` — Build, then run the Playwright e2e suite
+- `bun run lint` — oxlint in every package; `bunx tsc -b` in app/display (`typecheck` script) for type-checking (TypeScript 7)
 
 ## Tech Stack
 
@@ -29,7 +30,7 @@ Scoreboard monorepo: a real-time sports scoreboard system with an Express+Socket
 
 ## Deployment
 
-- `Dockerfile` (repo root) builds the server image: a multi-stage build that compiles both frontends into `packages/server/public`, then runs `bun run src/index.ts` on an `alpine-glibc` base with the Bun binary copied in. Build from the repo root: `docker build -t scoreboard-server .`
+- `Dockerfile` (repo root) builds the server image: a multi-stage build that compiles both frontends into `packages/server/public`, compiles the server with `bun build --compile` into a single executable, and ships both in a `FROM scratch` image (musl/libstdc++ libs + CA certs, non-root 65532). The binary finds the frontends via `PUBLIC_DIR=/app/public`. Build from the repo root: `docker build -t scoreboard-server .`
 
 ## Key Files
 
